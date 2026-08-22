@@ -64,6 +64,17 @@ class File(Base):
         default=True
     )
 
+    deleted_at = Column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    deleted_by = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=True
+    )
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now()
@@ -80,7 +91,8 @@ class File(Base):
 
     uploader = relationship(
         "User",
-        back_populates="uploaded_files"
+        back_populates="uploaded_files",
+        foreign_keys=[uploaded_by]
     )
 
     def __repr__(self):

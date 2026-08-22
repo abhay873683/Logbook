@@ -18,6 +18,7 @@ from app.models.task_progress import TaskProgress
 from app.models.subtask_progress import SubtaskProgress
 from app.models.comment_reply import CommentReply
 from app.models.activity_log import ActivityLog
+from app.models.file_type import FileType
 
 # ==========================
 # Create Database Tables
@@ -43,6 +44,9 @@ from app.api.v1.routes import dashboard
 from app.api.v1.routes import subtask_progress
 from app.api.v1.routes import comment_reply
 from app.api.v1.routes import activity_log
+from app.api.v1.routes import file_type
+from app.api.v1.routes import restore
+from app.api.v1.routes import trash
 
 # ==========================
 # FastAPI App
@@ -132,6 +136,21 @@ app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboar
 # Activity Logs
 # ==========================
 app.include_router(activity_log.router, prefix="/api/v1/activity", tags=["Activity Logs"])
+
+# ==========================
+# File Types
+# ==========================
+app.include_router(file_type.router, prefix="/api/v1/file-types", tags=["File Types"])
+
+# ==========================
+# File Restore
+# ==========================
+app.include_router(restore.router, prefix="/api/v1/restore", tags=["File Restore"])
+
+# ==========================
+# Trash
+# ==========================
+app.include_router(trash.router, prefix="/api/v1/trash", tags=["Trash"])
 
 # ==========================
 # Root

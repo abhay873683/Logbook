@@ -125,6 +125,7 @@ class User(Base):
     uploaded_files = relationship(
         "File",
         back_populates="uploader",
+        foreign_keys="File.uploaded_by",
         cascade="all, delete-orphan"
     )
 
