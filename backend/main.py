@@ -19,6 +19,7 @@ from app.models.subtask_progress import SubtaskProgress
 from app.models.comment_reply import CommentReply
 from app.models.activity_log import ActivityLog
 from app.models.file_type import FileType
+from app.models.file_share import FileShare
 
 # ==========================
 # Create Database Tables
@@ -47,6 +48,9 @@ from app.api.v1.routes import activity_log
 from app.api.v1.routes import file_type
 from app.api.v1.routes import restore
 from app.api.v1.routes import trash
+from app.api.v1.routes import file_share
+from app.api.v1.routes import revoke_share
+from app.api.v1.routes import file_report
 
 # ==========================
 # FastAPI App
@@ -151,6 +155,21 @@ app.include_router(restore.router, prefix="/api/v1/restore", tags=["File Restore
 # Trash
 # ==========================
 app.include_router(trash.router, prefix="/api/v1/trash", tags=["Trash"])
+
+# ==========================
+# File Share
+# ==========================
+app.include_router(file_share.router, prefix="/api/v1/file-share", tags=["File Share"])
+
+# ==========================
+# Revoke Share
+# ==========================
+app.include_router(revoke_share.router, prefix="/api/v1/revoke-share", tags=["Revoke Share"])
+
+# ==========================
+# File Report
+# ==========================
+app.include_router(file_report.router, prefix="/api/v1/file-report", tags=["File Report"])
 
 # ==========================
 # Root
