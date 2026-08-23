@@ -51,20 +51,96 @@ def get_task_dependencies(
 
 
 # -------------------------------
-# Create Dependency
+# Circular Dependency Detection
 # -------------------------------
-def create_dependency(
-    dependency: DependencyCreate,
-    db: Session
+def would_create_cycle(
+    predecessor_task_id: int,
+    successor_task_id: int,
+    db: Session,
+    exclude_dependency_id: int | None = None,
+):
+    """
+    Check whether adding:
+
+        predecessor_task_id -> successor_task_id
+
+    would create a circular dependency.
+
+    Example:
+        Existing:
+            2 -> 3
+            3 -> 4
+
+        New:
+            4 -> 2
+
+        This creates:
+            2 -> 3 -> 4 -> 2
+
+        Therefore it must be rejected.
+    """
+
+    dependencies = db.query(Dependency)
+
+    if exclude_dependency_id is not None:
+        dependencies = dependencies.filter(
+            Dependency.id != exclude_dependency_id
+        )
+
+    dependencies = dependencies.all()
+
+    # Build graph:
+    # predecessor -> successors
+    graph = {}
+
+    for item in dependencies:
+        graph.setdefault(
+            item.predecessor_task_id,
+            []
+        ).append(
+            item.successor_task_id
+        )
+
+    # If successor can already reach predecessor,
+    # adding predecessor -> successor creates a cycle.
+    stack = [successor_task_id]
+    visited = set()
+
+    while stack:
+        current_task_id = stack.pop()
+
+        if current_task_id == predecessor_task_id:
+            return True
+
+        if current_task_id in visited:
+            continue
+
+        visited.add(current_task_id)
+
+        for next_task_id in graph.get(
+            current_task_id,
+            []
+        ):
+            if next_task_id not in visited:
+                stack.append(next_task_id)
+
+    return False
+
+
+# -------------------------------
+# Validate Dependency
+# -------------------------------
+def validate_dependency(
+    predecessor_task_id: int,
+    successor_task_id: int,
+    db: Session,
+    exclude_dependency_id: int | None = None,
 ):
     # ----------------------------------
     # 1. Prevent Self Dependency
     # ----------------------------------
 
-    if (
-        dependency.predecessor_task_id
-        == dependency.successor_task_id
-    ):
+    if predecessor_task_id == successor_task_id:
         raise ValueError(
             "A task cannot depend on itself."
         )
@@ -76,8 +152,7 @@ def create_dependency(
     predecessor = (
         db.query(Task)
         .filter(
-            Task.id
-            == dependency.predecessor_task_id
+            Task.id == predecessor_task_id
         )
         .first()
     )
@@ -94,8 +169,7 @@ def create_dependency(
     successor = (
         db.query(Task)
         .filter(
-            Task.id
-            == dependency.successor_task_id
+            Task.id == successor_task_id
         )
         .first()
     )
@@ -109,16 +183,22 @@ def create_dependency(
     # 4. Prevent Duplicate Dependency
     # ----------------------------------
 
-    existing_dependency = (
+    duplicate_query = (
         db.query(Dependency)
         .filter(
             Dependency.predecessor_task_id
-            == dependency.predecessor_task_id,
+            == predecessor_task_id,
             Dependency.successor_task_id
-            == dependency.successor_task_id,
+            == successor_task_id,
         )
-        .first()
     )
+
+    if exclude_dependency_id is not None:
+        duplicate_query = duplicate_query.filter(
+            Dependency.id != exclude_dependency_id
+        )
+
+    existing_dependency = duplicate_query.first()
 
     if existing_dependency:
         raise ValueError(
@@ -126,8 +206,32 @@ def create_dependency(
         )
 
     # ----------------------------------
-    # 5. Create Dependency
+    # 5. Prevent Circular Dependency
     # ----------------------------------
+
+    if would_create_cycle(
+        predecessor_task_id,
+        successor_task_id,
+        db,
+        exclude_dependency_id,
+    ):
+        raise ValueError(
+            "Circular dependency detected."
+        )
+
+
+# -------------------------------
+# Create Dependency
+# -------------------------------
+def create_dependency(
+    dependency: DependencyCreate,
+    db: Session
+):
+    validate_dependency(
+        predecessor_task_id=dependency.predecessor_task_id,
+        successor_task_id=dependency.successor_task_id,
+        db=db,
+    )
 
     new_dependency = Dependency(
         predecessor_task_id=dependency.predecessor_task_id,
@@ -164,6 +268,23 @@ def update_dependency(
 
     update_data = dependency.model_dump(
         exclude_unset=True
+    )
+
+    new_predecessor_task_id = update_data.get(
+        "predecessor_task_id",
+        db_dependency.predecessor_task_id,
+    )
+
+    new_successor_task_id = update_data.get(
+        "successor_task_id",
+        db_dependency.successor_task_id,
+    )
+
+    validate_dependency(
+        predecessor_task_id=new_predecessor_task_id,
+        successor_task_id=new_successor_task_id,
+        db=db,
+        exclude_dependency_id=dependency_id,
     )
 
     for key, value in update_data.items():
