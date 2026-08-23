@@ -10,3 +10,10 @@ from .dependency import (
     DependencyUpdate,
     DependencyResponse,
 )
+
+from .team import (
+    TeamBase,
+    TeamCreate,
+    TeamUpdate,
+    TeamResponse,
+)

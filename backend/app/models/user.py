@@ -15,43 +15,67 @@ from app.core.database import Base
 class User(Base):
     __tablename__ = "users"
 
+    # ---------------------------------
+    # Primary Key
+    # ---------------------------------
     id = Column(
         Integer,
         primary_key=True,
         index=True
     )
 
+    # ---------------------------------
+    # Name
+    # ---------------------------------
     name = Column(
         String(255),
         nullable=False
     )
 
+    # ---------------------------------
+    # Email
+    # ---------------------------------
     email = Column(
         String(255),
         unique=True,
         nullable=False
     )
 
+    # ---------------------------------
+    # Password
+    # ---------------------------------
     password = Column(
         String(255),
         nullable=False
     )
 
+    # ---------------------------------
+    # Role
+    # ---------------------------------
     role = Column(
         String(50),
         default="user"
     )
 
+    # ---------------------------------
+    # Status
+    # ---------------------------------
     is_active = Column(
         Boolean,
         default=True
     )
 
+    # ---------------------------------
+    # Created At
+    # ---------------------------------
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now()
     )
 
+    # ---------------------------------
+    # Updated At
+    # ---------------------------------
     updated_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -61,7 +85,6 @@ class User(Base):
     # ---------------------------------
     # Projects Created
     # ---------------------------------
-
     projects_created = relationship(
         "Project",
         back_populates="creator",
@@ -71,7 +94,6 @@ class User(Base):
     # ---------------------------------
     # Tasks Assigned
     # ---------------------------------
-
     assigned_tasks = relationship(
         "Task",
         foreign_keys="Task.assigned_to",
@@ -81,7 +103,6 @@ class User(Base):
     # ---------------------------------
     # Tasks Created
     # ---------------------------------
-
     created_tasks = relationship(
         "Task",
         foreign_keys="Task.created_by",
@@ -91,7 +112,6 @@ class User(Base):
     # ---------------------------------
     # Subtasks Assigned
     # ---------------------------------
-
     assigned_subtasks = relationship(
         "Subtask",
         foreign_keys="Subtask.assigned_to",
@@ -101,7 +121,6 @@ class User(Base):
     # ---------------------------------
     # Subtasks Created
     # ---------------------------------
-
     created_subtasks = relationship(
         "Subtask",
         foreign_keys="Subtask.created_by",
@@ -111,7 +130,6 @@ class User(Base):
     # ---------------------------------
     # Comments
     # ---------------------------------
-
     comments = relationship(
         "Comment",
         back_populates="user",
@@ -121,7 +139,6 @@ class User(Base):
     # ---------------------------------
     # Uploaded Files
     # ---------------------------------
-
     uploaded_files = relationship(
         "File",
         back_populates="uploader",
@@ -132,7 +149,6 @@ class User(Base):
     # ---------------------------------
     # Task Progress Updates
     # ---------------------------------
-
     progress_updates = relationship(
         "TaskProgress",
         back_populates="user",
@@ -142,7 +158,6 @@ class User(Base):
     # ---------------------------------
     # Notifications
     # ---------------------------------
-
     notifications = relationship(
         "Notification",
         back_populates="user",
@@ -150,9 +165,8 @@ class User(Base):
     )
 
     # ---------------------------------
-    # Subtask Progress Updates (Day 21)
+    # Subtask Progress Updates
     # ---------------------------------
-
     subtask_progress = relationship(
         "SubtaskProgress",
         back_populates="user",
@@ -160,9 +174,8 @@ class User(Base):
     )
 
     # ---------------------------------
-    # Comment Replies (Day 21)
+    # Comment Replies
     # ---------------------------------
-
     comment_replies = relationship(
         "CommentReply",
         back_populates="user",
@@ -170,14 +183,25 @@ class User(Base):
     )
 
     # ---------------------------------
-    # Activity Logs (Day 21)
+    # Activity Logs
     # ---------------------------------
-
     activity_logs = relationship(
         "ActivityLog",
         back_populates="user",
         cascade="all, delete-orphan"
     )
 
+    # ---------------------------------
+    # Teams Led
+    # ---------------------------------
+    teams_led = relationship(
+        "Team",
+        foreign_keys="Team.team_lead_id",
+        back_populates="team_lead"
+    )
+
+    # ---------------------------------
+    # Object Representation
+    # ---------------------------------
     def __repr__(self):
         return f"<User {self.email}>"

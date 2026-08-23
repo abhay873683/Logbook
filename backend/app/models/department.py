@@ -1,4 +1,12 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Boolean,
+    DateTime,
+    ForeignKey,
+)
+
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -78,15 +86,24 @@ class Department(Base):
         back_populates="departments"
     )
 
+    # -------------------------
+    # Department -> Teams
+    # -------------------------
+    teams = relationship(
+        "Team",
+        back_populates="department",
+        cascade="all, delete-orphan"
+    )
+
     # ----------------------------------------------------
     # Employee Relationship
-    # (Day 17 me Employee model banne ke baad uncomment karenge)
+    # Future Employee Module
     # ----------------------------------------------------
 
     # employees = relationship(
     #     "Employee",
     #     back_populates="department",
-    #     cascade="all, delete"
+    #     cascade="all, delete-orphan"
     # )
 
     # -------------------------
