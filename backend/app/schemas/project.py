@@ -1,7 +1,6 @@
-from typing import Optional
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ----------------------------------------
@@ -9,11 +8,27 @@ from pydantic import BaseModel, EmailStr
 # ----------------------------------------
 class ProjectBase(BaseModel):
     name: str
-    description: Optional[str] = None
+
+    description: str | None = None
+
     company_id: int
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+
+    department_id: int | None = None
+
+    team_id: int | None = None
+
+    start_date: datetime | None = None
+
+    end_date: datetime | None = None
+
     status: str = "Planned"
+
+    progress: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+    )
+
     is_active: bool = True
 
 
@@ -28,13 +43,29 @@ class ProjectCreate(ProjectBase):
 # Update Project
 # ----------------------------------------
 class ProjectUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    company_id: Optional[int] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-    status: Optional[str] = None
-    is_active: Optional[bool] = None
+    name: str | None = None
+
+    description: str | None = None
+
+    company_id: int | None = None
+
+    department_id: int | None = None
+
+    team_id: int | None = None
+
+    start_date: datetime | None = None
+
+    end_date: datetime | None = None
+
+    status: str | None = None
+
+    progress: int | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+    )
+
+    is_active: bool | None = None
 
 
 # ----------------------------------------
@@ -42,16 +73,33 @@ class ProjectUpdate(BaseModel):
 # ----------------------------------------
 class ProjectResponse(BaseModel):
     id: int
+
     name: str
-    description: Optional[str]
+
+    description: str | None
+
     company_id: int
+
+    department_id: int | None
+
+    team_id: int | None
+
     created_by: int
-    start_date: Optional[datetime]
-    end_date: Optional[datetime]
+
+    start_date: datetime | None
+
+    end_date: datetime | None
+
     status: str
+
+    progress: int
+
     is_active: bool
+
     created_at: datetime
+
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )

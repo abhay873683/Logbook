@@ -33,15 +33,50 @@ class Project(Base):
         nullable=True
     )
 
+    # ---------------------------------
+    # Company
+    # ---------------------------------
     company_id = Column(
         Integer,
-        ForeignKey("companies.id"),
+        ForeignKey(
+            "companies.id",
+            ondelete="CASCADE"
+        ),
         nullable=False
     )
 
+    # ---------------------------------
+    # Department - Day 28
+    # ---------------------------------
+    department_id = Column(
+        Integer,
+        ForeignKey(
+            "departments.id",
+            ondelete="CASCADE"
+        ),
+        nullable=True
+    )
+
+    # ---------------------------------
+    # Team - Day 28
+    # ---------------------------------
+    team_id = Column(
+        Integer,
+        ForeignKey(
+            "teams.id",
+            ondelete="SET NULL"
+        ),
+        nullable=True
+    )
+
+    # ---------------------------------
+    # Creator
+    # ---------------------------------
     created_by = Column(
         Integer,
-        ForeignKey("users.id"),
+        ForeignKey(
+            "users.id"
+        ),
         nullable=False
     )
 
@@ -57,7 +92,17 @@ class Project(Base):
 
     status = Column(
         String(50),
-        default="Planning"
+        default="Planned"
+    )
+
+    # ---------------------------------
+    # Project Progress - Day 28
+    # 0 to 100
+    # ---------------------------------
+    progress = Column(
+        Integer,
+        default=0,
+        nullable=False
     )
 
     is_active = Column(
@@ -80,20 +125,27 @@ class Project(Base):
     # Relationships
     # ---------------------------------
 
-    # Company -> Projects
     company = relationship(
         "Company",
         back_populates="projects"
     )
 
-    # User -> Created Projects
+    department = relationship(
+        "Department",
+        back_populates="projects"
+    )
+
+    team = relationship(
+        "Team",
+        back_populates="projects"
+    )
+
     creator = relationship(
         "User",
         back_populates="projects_created",
         foreign_keys=[created_by]
     )
 
-    # Project -> Tasks
     tasks = relationship(
         "Task",
         back_populates="project",
@@ -101,4 +153,10 @@ class Project(Base):
     )
 
     def __repr__(self):
-        return f"<Project {self.name}>"
+        return (
+            f"<Project(id={self.id}, "
+            f"name='{self.name}', "
+            f"company_id={self.company_id}, "
+            f"department_id={self.department_id}, "
+            f"team_id={self.team_id})>"
+        )

@@ -18,34 +18,22 @@ from app.core.database import Base
 class Team(Base):
     __tablename__ = "teams"
 
-    # ---------------------------------
-    # Primary Key
-    # ---------------------------------
     id = Column(
         Integer,
         primary_key=True,
         index=True
     )
 
-    # ---------------------------------
-    # Team Name
-    # ---------------------------------
     name = Column(
         String(255),
         nullable=False
     )
 
-    # ---------------------------------
-    # Description
-    # ---------------------------------
     description = Column(
         Text,
         nullable=True
     )
 
-    # ---------------------------------
-    # Department
-    # ---------------------------------
     department_id = Column(
         Integer,
         ForeignKey(
@@ -55,9 +43,6 @@ class Team(Base):
         nullable=False
     )
 
-    # ---------------------------------
-    # Team Lead
-    # ---------------------------------
     team_lead_id = Column(
         Integer,
         ForeignKey(
@@ -67,25 +52,16 @@ class Team(Base):
         nullable=True
     )
 
-    # ---------------------------------
-    # Status
-    # ---------------------------------
     is_active = Column(
         Boolean,
         default=True
     )
 
-    # ---------------------------------
-    # Created At
-    # ---------------------------------
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now()
     )
 
-    # ---------------------------------
-    # Updated At
-    # ---------------------------------
     updated_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -107,11 +83,12 @@ class Team(Base):
         back_populates="teams_led"
     )
 
-    # ---------------------------------
-    # Business Constraint
-    # Same department cannot contain
-    # two teams with the same name
-    # ---------------------------------
+    # Day 28 - Team -> Projects
+    projects = relationship(
+        "Project",
+        back_populates="team"
+    )
+
     __table_args__ = (
         UniqueConstraint(
             "name",
@@ -120,9 +97,6 @@ class Team(Base):
         ),
     )
 
-    # ---------------------------------
-    # Representation
-    # ---------------------------------
     def __repr__(self):
         return (
             f"<Team(id={self.id}, "

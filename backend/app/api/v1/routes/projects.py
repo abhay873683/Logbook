@@ -10,7 +10,7 @@ from app.models.user import User
 from app.schemas.project import (
     ProjectCreate,
     ProjectUpdate,
-    ProjectResponse
+    ProjectResponse,
 )
 
 from app.services.project_service import (
@@ -18,8 +18,9 @@ from app.services.project_service import (
     get_all_projects,
     get_project_by_id,
     update_project,
-    delete_project
+    delete_project,
 )
+
 
 router = APIRouter()
 
@@ -30,24 +31,24 @@ router = APIRouter()
 @router.post(
     "/",
     response_model=ProjectResponse,
-    status_code=201
+    status_code=201,
 )
 def create_new_project(
     project: ProjectCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     try:
         return create_project(
             db,
             project,
-            current_user
+            current_user,
         )
 
     except ValueError as e:
         raise HTTPException(
             status_code=400,
-            detail=str(e)
+            detail=str(e),
         )
 
 
@@ -56,11 +57,11 @@ def create_new_project(
 # ----------------------------------------
 @router.get(
     "/",
-    response_model=List[ProjectResponse]
+    response_model=List[ProjectResponse],
 )
 def get_projects(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     return get_all_projects(db)
 
@@ -70,23 +71,23 @@ def get_projects(
 # ----------------------------------------
 @router.get(
     "/{project_id}",
-    response_model=ProjectResponse
+    response_model=ProjectResponse,
 )
 def get_project(
     project_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     try:
         return get_project_by_id(
             db,
-            project_id
+            project_id,
         )
 
     except ValueError as e:
         raise HTTPException(
             status_code=404,
-            detail=str(e)
+            detail=str(e),
         )
 
 
@@ -95,25 +96,32 @@ def get_project(
 # ----------------------------------------
 @router.put(
     "/{project_id}",
-    response_model=ProjectResponse
+    response_model=ProjectResponse,
 )
 def update_existing_project(
     project_id: int,
     project: ProjectUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     try:
         return update_project(
             db,
             project_id,
-            project
+            project,
         )
 
     except ValueError as e:
+        error_message = str(e)
+
+        if error_message == "Project not found":
+            status_code = 404
+        else:
+            status_code = 400
+
         raise HTTPException(
-            status_code=404,
-            detail=str(e)
+            status_code=status_code,
+            detail=error_message,
         )
 
 
@@ -124,16 +132,23 @@ def update_existing_project(
 def delete_existing_project(
     project_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     try:
         return delete_project(
             db,
-            project_id
+            project_id,
         )
 
     except ValueError as e:
+        error_message = str(e)
+
+        if error_message == "Project not found":
+            status_code = 404
+        else:
+            status_code = 400
+
         raise HTTPException(
-            status_code=404,
-            detail=str(e)
+            status_code=status_code,
+            detail=error_message,
         )
