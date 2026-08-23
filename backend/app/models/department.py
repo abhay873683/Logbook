@@ -1,119 +1,100 @@
-from datetime import datetime
-
-from sqlalchemy import (
-    Column,
-    Integer,
-    ForeignKey,
-    String,
-    DateTime,
-)
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from app.core.database import Base
 
 
-class Dependency(Base):
-    __tablename__ = "dependencies"
+class Department(Base):
+    __tablename__ = "departments"
 
-    # ----------------------------------
+    # -------------------------
     # Primary Key
-    # ----------------------------------
-
+    # -------------------------
     id = Column(
         Integer,
         primary_key=True,
         index=True
     )
 
-    # ----------------------------------
-    # Predecessor Task
-    # ----------------------------------
-    # The task that must happen first.
-    #
-    # Example:
-    # Database Design -> Backend API
-    #
-    # Database Design = predecessor
-    # ----------------------------------
+    # -------------------------
+    # Department Name
+    # -------------------------
+    name = Column(
+        String(255),
+        nullable=False
+    )
 
-    predecessor_task_id = Column(
+    # -------------------------
+    # Department Description
+    # -------------------------
+    description = Column(
+        String(500),
+        nullable=True
+    )
+
+    # -------------------------
+    # Company Foreign Key
+    # -------------------------
+    company_id = Column(
         Integer,
         ForeignKey(
-            "tasks.id",
+            "companies.id",
             ondelete="CASCADE"
         ),
         nullable=False
     )
 
-    # ----------------------------------
-    # Successor Task
-    # ----------------------------------
-    # The task that depends on predecessor.
-    #
-    # Backend API = successor
-    # ----------------------------------
-
-    successor_task_id = Column(
-        Integer,
-        ForeignKey(
-            "tasks.id",
-            ondelete="CASCADE"
-        ),
-        nullable=False
+    # -------------------------
+    # Status
+    # -------------------------
+    is_active = Column(
+        Boolean,
+        default=True
     )
 
-    # ----------------------------------
-    # Dependency Type
-    # ----------------------------------
-
-    dependency_type = Column(
-        String(50),
-        nullable=False,
-        default="finish_to_start"
-    )
-
-    # ----------------------------------
-    # Lag / Buffer Days
-    # ----------------------------------
-
-    lag_days = Column(
-        Integer,
-        nullable=False,
-        default=0
-    )
-
-    # ----------------------------------
+    # -------------------------
     # Created At
-    # ----------------------------------
-
+    # -------------------------
     created_at = Column(
         DateTime(timezone=True),
-        default=datetime.utcnow
+        server_default=func.now()
     )
 
-    # ----------------------------------
-    # Relationships
-    # ----------------------------------
-
-    predecessor = relationship(
-        "Task",
-        foreign_keys=[predecessor_task_id],
-        back_populates="dependencies_before"
+    # -------------------------
+    # Updated At
+    # -------------------------
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
     )
 
-    successor = relationship(
-        "Task",
-        foreign_keys=[successor_task_id],
-        back_populates="dependencies_after"
+    # -------------------------
+    # Relationship with Company
+    # -------------------------
+    company = relationship(
+        "Company",
+        back_populates="departments"
     )
 
-    # ----------------------------------
-    # Representation
-    # ----------------------------------
+    # ----------------------------------------------------
+    # Employee Relationship
+    # (Day 17 me Employee model banne ke baad uncomment karenge)
+    # ----------------------------------------------------
 
+    # employees = relationship(
+    #     "Employee",
+    #     back_populates="department",
+    #     cascade="all, delete"
+    # )
+
+    # -------------------------
+    # Object Representation
+    # -------------------------
     def __repr__(self):
         return (
-            f"<Dependency "
-            f"{self.predecessor_task_id} -> "
-            f"{self.successor_task_id}>"
+            f"<Department(id={self.id}, "
+            f"name='{self.name}', "
+            f"company_id={self.company_id})>"
         )
