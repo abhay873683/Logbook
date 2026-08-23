@@ -8,12 +8,9 @@ from sqlalchemy import (
     Text,
     Enum,
 )
-
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-
 from app.core.database import Base
-
 import enum
 
 
@@ -161,6 +158,44 @@ class Task(Base):
         back_populates="task",
         cascade="all, delete-orphan"
     )
+
+    # ----------------------------------
+    # TreeFlow - Task Dependencies
+    # ----------------------------------
+
+    # Tasks that depend on this task
+    #
+    # Example:
+    # Task A -> Task B
+    #
+    # For Task A:
+    # dependencies_before = [Task B dependency]
+
+    dependencies_before = relationship(
+        "Dependency",
+        foreign_keys="Dependency.predecessor_task_id",
+        back_populates="predecessor",
+        cascade="all, delete-orphan"
+    )
+
+    # Tasks that this task depends on
+    #
+    # Example:
+    # Task A -> Task B
+    #
+    # For Task B:
+    # dependencies_after = [Task A dependency]
+
+    dependencies_after = relationship(
+        "Dependency",
+        foreign_keys="Dependency.successor_task_id",
+        back_populates="successor",
+        cascade="all, delete-orphan"
+    )
+
+    # ----------------------------------
+    # Representation
+    # ----------------------------------
 
     def __repr__(self):
         return f"<Task {self.name}>"

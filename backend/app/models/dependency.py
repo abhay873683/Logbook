@@ -15,26 +15,11 @@ from app.core.database import Base
 class Dependency(Base):
     __tablename__ = "dependencies"
 
-    # ----------------------------------
-    # Primary Key
-    # ----------------------------------
-
     id = Column(
         Integer,
         primary_key=True,
         index=True
     )
-
-    # ----------------------------------
-    # Predecessor Task
-    # ----------------------------------
-    # The task that must happen first.
-    #
-    # Example:
-    # Database Design -> Backend API
-    #
-    # Database Design = predecessor
-    # ----------------------------------
 
     predecessor_task_id = Column(
         Integer,
@@ -45,14 +30,6 @@ class Dependency(Base):
         nullable=False
     )
 
-    # ----------------------------------
-    # Successor Task
-    # ----------------------------------
-    # The task that depends on predecessor.
-    #
-    # Backend API = successor
-    # ----------------------------------
-
     successor_task_id = Column(
         Integer,
         ForeignKey(
@@ -62,29 +39,17 @@ class Dependency(Base):
         nullable=False
     )
 
-    # ----------------------------------
-    # Dependency Type
-    # ----------------------------------
-
     dependency_type = Column(
         String(50),
         nullable=False,
         default="finish_to_start"
     )
 
-    # ----------------------------------
-    # Lag / Buffer Days
-    # ----------------------------------
-
     lag_days = Column(
         Integer,
         nullable=False,
         default=0
     )
-
-    # ----------------------------------
-    # Created At
-    # ----------------------------------
 
     created_at = Column(
         DateTime(timezone=True),
@@ -106,10 +71,6 @@ class Dependency(Base):
         foreign_keys=[successor_task_id],
         back_populates="dependencies_after"
     )
-
-    # ----------------------------------
-    # Representation
-    # ----------------------------------
 
     def __repr__(self):
         return (
