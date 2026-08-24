@@ -1,6 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+)
+
 from sqlalchemy.orm import Session
-import traceback
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -23,22 +27,17 @@ from app.services.dependency_service import (
 )
 
 
-# -----------------------------
-# Router
-# -----------------------------
-
 router = APIRouter(
     tags=["Dependencies"]
 )
 
 
-# ---------------------------------------
+# =========================================================
 # GET ALL DEPENDENCIES
-# ---------------------------------------
-
+# =========================================================
 @router.get(
     "/",
-    response_model=list[DependencyResponse]
+    response_model=list[DependencyResponse],
 )
 def read_dependencies(
     db: Session = Depends(get_db),
@@ -47,13 +46,38 @@ def read_dependencies(
     return get_all_dependencies(db)
 
 
-# ---------------------------------------
-# GET DEPENDENCY BY ID
-# ---------------------------------------
+# =========================================================
+# GET DEPENDENCIES FOR TASK
+# IMPORTANT: Keep this before /{dependency_id}
+# =========================================================
+@router.get(
+    "/task/{task_id}",
+    response_model=list[DependencyResponse],
+)
+def read_task_dependencies(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return get_task_dependencies(
+            task_id,
+            db,
+        )
 
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
+
+
+# =========================================================
+# GET DEPENDENCY BY ID
+# =========================================================
 @router.get(
     "/{dependency_id}",
-    response_model=DependencyResponse
+    response_model=DependencyResponse,
 )
 def read_dependency(
     dependency_id: int,
@@ -62,45 +86,25 @@ def read_dependency(
 ):
     dependency = get_dependency_by_id(
         dependency_id,
-        db
+        db,
     )
 
     if not dependency:
         raise HTTPException(
             status_code=404,
-            detail="Dependency not found"
+            detail="Dependency not found",
         )
 
     return dependency
 
 
-# ---------------------------------------
-# GET DEPENDENCIES OF A TASK
-# ---------------------------------------
-
-@router.get(
-    "/task/{task_id}",
-    response_model=list[DependencyResponse]
-)
-def read_task_dependencies(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    return get_task_dependencies(
-        task_id,
-        db
-    )
-
-
-# ---------------------------------------
+# =========================================================
 # CREATE DEPENDENCY
-# ---------------------------------------
-
+# =========================================================
 @router.post(
     "/",
     response_model=DependencyResponse,
-    status_code=201
+    status_code=201,
 )
 def create_new_dependency(
     dependency: DependencyCreate,
@@ -114,37 +118,18 @@ def create_new_dependency(
         )
 
     except ValueError as e:
-
         raise HTTPException(
             status_code=400,
-            detail=str(e)
-        )
-
-    except Exception as e:
-
-        print(
-            "\n========== DEPENDENCY CREATE ERROR =========="
-        )
-
-        traceback.print_exc()
-
-        print(
-            "=============================================\n"
-        )
-
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to create dependency"
+            detail=str(e),
         )
 
 
-# ---------------------------------------
+# =========================================================
 # UPDATE DEPENDENCY
-# ---------------------------------------
-
+# =========================================================
 @router.put(
     "/{dependency_id}",
-    response_model=DependencyResponse
+    response_model=DependencyResponse,
 )
 def update_existing_dependency(
     dependency_id: int,
@@ -153,18 +138,16 @@ def update_existing_dependency(
     current_user: User = Depends(get_current_user),
 ):
     try:
-
         updated_dependency = update_dependency(
             dependency_id,
             dependency,
-            db
+            db,
         )
 
         if not updated_dependency:
-
             raise HTTPException(
                 status_code=404,
-                detail="Dependency not found"
+                detail="Dependency not found",
             )
 
         return updated_dependency
@@ -172,68 +155,33 @@ def update_existing_dependency(
     except HTTPException:
         raise
 
-    except Exception:
-
-        print(
-            "\n========== DEPENDENCY UPDATE ERROR =========="
-        )
-
-        traceback.print_exc()
-
-        print(
-            "=============================================\n"
-        )
-
+    except ValueError as e:
         raise HTTPException(
-            status_code=500,
-            detail="Failed to update dependency"
+            status_code=400,
+            detail=str(e),
         )
 
 
-# ---------------------------------------
+# =========================================================
 # DELETE DEPENDENCY
-# ---------------------------------------
-
+# =========================================================
 @router.delete("/{dependency_id}")
 def delete_existing_dependency(
     dependency_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    try:
+    deleted = delete_dependency(
+        dependency_id,
+        db,
+    )
 
-        deleted = delete_dependency(
-            dependency_id,
-            db
-        )
-
-        if not deleted:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Dependency not found"
-            )
-
-        return {
-            "message": "Dependency deleted successfully"
-        }
-
-    except HTTPException:
-        raise
-
-    except Exception:
-
-        print(
-            "\n========== DEPENDENCY DELETE ERROR =========="
-        )
-
-        traceback.print_exc()
-
-        print(
-            "=============================================\n"
-        )
-
+    if not deleted:
         raise HTTPException(
-            status_code=500,
-            detail="Failed to delete dependency"
+            status_code=404,
+            detail="Dependency not found",
         )
+
+    return {
+        "message": "Dependency deleted successfully"
+    }

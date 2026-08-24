@@ -1,4 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+)
+
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -14,18 +19,20 @@ from app.schemas.comment import (
 
 from app.services.comment_service import (
     get_all_comments,
+    get_task_comments,
     get_comment_by_id,
     create_comment,
     update_comment,
     delete_comment,
 )
 
+
 router = APIRouter()
 
 
-# -----------------------------------
-# Get All Comments
-# -----------------------------------
+# =========================================================
+# GET ALL COMMENTS
+# =========================================================
 @router.get(
     "/",
     response_model=list[CommentResponse],
@@ -37,9 +44,35 @@ def read_comments(
     return get_all_comments(db)
 
 
-# -----------------------------------
-# Get Comment By ID
-# -----------------------------------
+# =========================================================
+# GET COMMENTS FOR TASK
+# IMPORTANT: Keep before /{comment_id}
+# =========================================================
+@router.get(
+    "/task/{task_id}",
+    response_model=list[CommentResponse],
+)
+def read_task_comments(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return get_task_comments(
+            task_id,
+            db,
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
+
+
+# =========================================================
+# GET COMMENT BY ID
+# =========================================================
 @router.get(
     "/{comment_id}",
     response_model=CommentResponse,
@@ -49,20 +82,22 @@ def read_comment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    comment = get_comment_by_id(comment_id, db)
-
-    if not comment:
-        raise HTTPException(
-            status_code=404,
-            detail="Comment not found"
+    try:
+        return get_comment_by_id(
+            comment_id,
+            db,
         )
 
-    return comment
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
 
 
-# -----------------------------------
-# Create Comment
-# -----------------------------------
+# =========================================================
+# CREATE COMMENT
+# =========================================================
 @router.post(
     "/",
     response_model=CommentResponse,
@@ -73,16 +108,30 @@ def create_new_comment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return create_comment(
-        comment,
-        current_user.id,
-        db,
-    )
+    try:
+        return create_comment(
+            comment,
+            current_user.id,
+            db,
+        )
+
+    except ValueError as e:
+        error_message = str(e)
+
+        if error_message == "Task not found":
+            status_code = 404
+        else:
+            status_code = 400
+
+        raise HTTPException(
+            status_code=status_code,
+            detail=error_message,
+        )
 
 
-# -----------------------------------
-# Update Comment
-# -----------------------------------
+# =========================================================
+# UPDATE COMMENT
+# =========================================================
 @router.put(
     "/{comment_id}",
     response_model=CommentResponse,
@@ -93,41 +142,47 @@ def update_existing_comment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    updated_comment = update_comment(
-        comment_id,
-        comment,
-        db,
-    )
-
-    if not updated_comment:
-        raise HTTPException(
-            status_code=404,
-            detail="Comment not found"
+    try:
+        return update_comment(
+            comment_id,
+            comment,
+            db,
         )
 
-    return updated_comment
+    except ValueError as e:
+        error_message = str(e)
+
+        if error_message in {
+            "Comment not found",
+            "Task not found",
+        }:
+            status_code = 404
+        else:
+            status_code = 400
+
+        raise HTTPException(
+            status_code=status_code,
+            detail=error_message,
+        )
 
 
-# -----------------------------------
-# Delete Comment
-# -----------------------------------
+# =========================================================
+# DELETE COMMENT
+# =========================================================
 @router.delete("/{comment_id}")
 def delete_existing_comment(
     comment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    deleted = delete_comment(
-        comment_id,
-        db,
-    )
-
-    if not deleted:
-        raise HTTPException(
-            status_code=404,
-            detail="Comment not found"
+    try:
+        return delete_comment(
+            comment_id,
+            db,
         )
 
-    return {
-        "message": "Comment deleted successfully"
-    }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
