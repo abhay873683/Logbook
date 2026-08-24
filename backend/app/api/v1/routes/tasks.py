@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-import traceback
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -21,9 +20,7 @@ from app.services.task_service import (
     delete_task,
 )
 
-# -----------------------------
-# Router
-# -----------------------------
+
 router = APIRouter(
     tags=["Tasks"]
 )
@@ -32,7 +29,10 @@ router = APIRouter(
 # ---------------------------------------
 # GET ALL TASKS
 # ---------------------------------------
-@router.get("/", response_model=list[TaskResponse])
+@router.get(
+    "/",
+    response_model=list[TaskResponse]
+)
 def read_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -43,13 +43,19 @@ def read_tasks(
 # ---------------------------------------
 # GET TASK BY ID
 # ---------------------------------------
-@router.get("/{task_id}", response_model=TaskResponse)
+@router.get(
+    "/{task_id}",
+    response_model=TaskResponse
+)
 def read_task(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    task = get_task_by_id(task_id, db)
+    task = get_task_by_id(
+        task_id,
+        db
+    )
 
     if not task:
         raise HTTPException(
@@ -63,7 +69,11 @@ def read_task(
 # ---------------------------------------
 # CREATE TASK
 # ---------------------------------------
-@router.post("/", response_model=TaskResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=TaskResponse,
+    status_code=201
+)
 def create_new_task(
     task: TaskCreate,
     db: Session = Depends(get_db),
@@ -76,13 +86,9 @@ def create_new_task(
             db=db,
         )
 
-    except Exception as e:
-        print("\n========== TASK CREATE ERROR ==========")
-        traceback.print_exc()
-        print("=======================================\n")
-
+    except ValueError as e:
         raise HTTPException(
-            status_code=500,
+            status_code=400,
             detail=str(e)
         )
 
@@ -90,7 +96,10 @@ def create_new_task(
 # ---------------------------------------
 # UPDATE TASK
 # ---------------------------------------
-@router.put("/{task_id}", response_model=TaskResponse)
+@router.put(
+    "/{task_id}",
+    response_model=TaskResponse
+)
 def update_existing_task(
     task_id: int,
     task: TaskUpdate,
@@ -98,7 +107,11 @@ def update_existing_task(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        updated_task = update_task(task_id, task, db)
+        updated_task = update_task(
+            task_id,
+            task,
+            db
+        )
 
         if not updated_task:
             raise HTTPException(
@@ -108,13 +121,12 @@ def update_existing_task(
 
         return updated_task
 
-    except Exception as e:
-        print("\n========== TASK UPDATE ERROR ==========")
-        traceback.print_exc()
-        print("=======================================\n")
+    except HTTPException:
+        raise
 
+    except ValueError as e:
         raise HTTPException(
-            status_code=500,
+            status_code=400,
             detail=str(e)
         )
 
@@ -128,25 +140,17 @@ def delete_existing_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    try:
-        deleted = delete_task(task_id, db)
+    deleted = delete_task(
+        task_id,
+        db
+    )
 
-        if not deleted:
-            raise HTTPException(
-                status_code=404,
-                detail="Task not found"
-            )
-
-        return {
-            "message": "Task deleted successfully"
-        }
-
-    except Exception as e:
-        print("\n========== TASK DELETE ERROR ==========")
-        traceback.print_exc()
-        print("=======================================\n")
-
+    if not deleted:
         raise HTTPException(
-            status_code=500,
-            detail=str(e)
+            status_code=404,
+            detail="Task not found"
         )
+
+    return {
+        "message": "Task deleted successfully"
+    }

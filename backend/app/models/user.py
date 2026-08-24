@@ -82,6 +82,10 @@ class User(Base):
         onupdate=func.now()
     )
 
+    # =================================================
+    # Relationships
+    # =================================================
+
     # ---------------------------------
     # Projects Created
     # ---------------------------------
@@ -93,6 +97,7 @@ class User(Base):
 
     # ---------------------------------
     # Tasks Assigned
+    # Legacy Single Assignee
     # ---------------------------------
     assigned_tasks = relationship(
         "Task",
@@ -107,6 +112,16 @@ class User(Base):
         "Task",
         foreign_keys="Task.created_by",
         back_populates="creator"
+    )
+
+    # ---------------------------------
+    # Multiple Task Assignments
+    # Day 29
+    # ---------------------------------
+    task_assignments = relationship(
+        "TaskAssignee",
+        back_populates="user",
+        cascade="all, delete-orphan"
     )
 
     # ---------------------------------
@@ -201,7 +216,7 @@ class User(Base):
     )
 
     # ---------------------------------
-    # Object Representation
+    # Representation
     # ---------------------------------
     def __repr__(self):
         return f"<User {self.email}>"

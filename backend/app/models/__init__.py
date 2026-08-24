@@ -13,3 +13,4 @@ from .subtask_progress import SubtaskProgress
 from .activity_log import ActivityLog
 from .dependency import Dependency
 from .team import Team
+from .task_assignee import TaskAssignee
