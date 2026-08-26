@@ -63,8 +63,14 @@ from app.api.v1.routes import dependency
 from app.api.v1.routes import chat
 from app.api.v1.routes import chat_ws
 
-# AI Assistant
 from app.api.v1.routes import ai
+
+# ============================================================
+# Day 38 - Notification Preferences / Events / WebSocket
+# ============================================================
+
+from app.api.v1.routes import notification_events
+from app.api.v1.routes import notification_ws
 
 
 # ============================================================
@@ -321,13 +327,35 @@ app.include_router(
 
 
 # ============================================================
-# Notifications
+# Existing Notifications
 # ============================================================
 
 app.include_router(
     notification.router,
     prefix="/api/v1/notification",
     tags=["Notification"],
+)
+
+
+# ============================================================
+# Day 38 - Notification Preferences & Event Logs
+# ============================================================
+
+app.include_router(
+    notification_events.router,
+    prefix="/api/v1",
+    tags=["Notification Events"],
+)
+
+
+# ============================================================
+# Day 38 - Real-time Notification WebSocket
+# ============================================================
+
+app.include_router(
+    notification_ws.router,
+    prefix="/api/v1",
+    tags=["Real-time Notifications"],
 )
 
 

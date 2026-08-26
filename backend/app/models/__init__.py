@@ -47,3 +47,6 @@ from .chat import *
 
 # AI Assistant
 from .ai import *
+
+from .notification_preference import *
+from .event_log import *
