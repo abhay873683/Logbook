@@ -6,6 +6,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    JSON,
 )
 
 from sqlalchemy.orm import relationship
@@ -25,7 +26,10 @@ class Notification(Base):
 
     user_id = Column(
         Integer,
-        ForeignKey("users.id"),
+        ForeignKey(
+            "users.id",
+            ondelete="CASCADE"
+        ),
         nullable=False
     )
 
@@ -41,12 +45,19 @@ class Notification(Base):
 
     type = Column(
         String(50),
-        default="info"
+        default="info",
+        nullable=False
+    )
+
+    data = Column(
+        JSON,
+        nullable=True
     )
 
     is_read = Column(
         Boolean,
-        default=False
+        default=False,
+        nullable=False
     )
 
     created_at = Column(
@@ -54,9 +65,11 @@ class Notification(Base):
         server_default=func.now()
     )
 
-    # -----------------------------
-    # Relationships
-    # -----------------------------
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
+    )
 
     user = relationship(
         "User",
@@ -64,4 +77,9 @@ class Notification(Base):
     )
 
     def __repr__(self):
-        return f"<Notification {self.id}>"
+        return (
+            f"<Notification("
+            f"id={self.id}, "
+            f"user_id={self.user_id}, "
+            f"title='{self.title}')>"
+        )
