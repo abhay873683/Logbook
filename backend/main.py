@@ -47,9 +47,13 @@ from app.api.v1.routes import file_share
 from app.api.v1.routes import revoke_share
 from app.api.v1.routes import file_report
 from app.api.v1.routes import dependency
-
-# Day 33 - Reports & Analytics
 from app.api.v1.routes import reports
+
+# =========================================================
+# Day 34 - Chat & Collaboration
+# =========================================================
+
+from app.api.v1.routes import chat
 
 
 # =========================================================
@@ -164,7 +168,7 @@ app.include_router(
 
 # =========================================================
 # Subtask Progress
-# IMPORTANT: Register before generic Subtasks router
+# IMPORTANT: Keep before generic Subtasks router
 # =========================================================
 
 app.include_router(
@@ -187,7 +191,7 @@ app.include_router(
 
 # =========================================================
 # Comment Replies
-# IMPORTANT: Register before generic Comments router
+# IMPORTANT: Keep before generic Comments router
 # =========================================================
 
 app.include_router(
@@ -271,6 +275,17 @@ app.include_router(
     reports.router,
     prefix="/api/v1/reports",
     tags=["Reports & Analytics"],
+)
+
+
+# =========================================================
+# Chat & Collaboration - Day 34
+# =========================================================
+
+app.include_router(
+    chat.router,
+    prefix="/api/v1/chat",
+    tags=["Chat & Collaboration"],
 )
 
 

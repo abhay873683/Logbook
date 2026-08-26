@@ -14,7 +14,7 @@ from .team import *
 from .project import *
 from .project_user import *
 
-# Task
+# Tasks
 from .task import *
 from .task_assignee import *
 from .subtask import *
@@ -41,3 +41,9 @@ from .notification import *
 
 # Activity Logs
 from .activity_log import *
+
+# ============================================================
+# Day 34 - Chat & Collaboration
+# ============================================================
+
+from .chat import *
