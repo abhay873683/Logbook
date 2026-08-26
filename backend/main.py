@@ -1,25 +1,29 @@
-﻿from fastapi import FastAPI
+﻿# ============================================================
+# TreeFlow AI - Main Application
+# ============================================================
+
+from fastapi import FastAPI
 
 from app.core.database import Base, engine
 
 
-# =========================================================
+# ============================================================
 # Import All Models
-# =========================================================
+# ============================================================
 
 from app.models import *
 
 
-# =========================================================
+# ============================================================
 # Create Database Tables
-# =========================================================
+# ============================================================
 
 Base.metadata.create_all(bind=engine)
 
 
-# =========================================================
+# ============================================================
 # Import API Routes
-# =========================================================
+# ============================================================
 
 from app.api.v1.routes import health
 from app.api.v1.routes import auth
@@ -27,38 +31,47 @@ from app.api.v1.routes import users
 from app.api.v1.routes import company
 from app.api.v1.routes import department
 from app.api.v1.routes import teams
+
 from app.api.v1.routes import projects
 from app.api.v1.routes import tasks
 from app.api.v1.routes import task_assignees
 from app.api.v1.routes import subtasks
+
 from app.api.v1.routes import comments
+from app.api.v1.routes import comment_reply
+
 from app.api.v1.routes import files
 from app.api.v1.routes import file_versions
-from app.api.v1.routes import progress
-from app.api.v1.routes import notification
-from app.api.v1.routes import dashboard
-from app.api.v1.routes import subtask_progress
-from app.api.v1.routes import comment_reply
-from app.api.v1.routes import activity_log
 from app.api.v1.routes import file_type
-from app.api.v1.routes import restore
-from app.api.v1.routes import trash
 from app.api.v1.routes import file_share
 from app.api.v1.routes import revoke_share
+from app.api.v1.routes import restore
+from app.api.v1.routes import trash
 from app.api.v1.routes import file_report
-from app.api.v1.routes import dependency
+
+from app.api.v1.routes import progress
+from app.api.v1.routes import subtask_progress
+
+from app.api.v1.routes import notification
+from app.api.v1.routes import activity_log
+
+from app.api.v1.routes import dashboard
 from app.api.v1.routes import reports
 
-# =========================================================
-# Day 34 - Chat & Collaboration
-# =========================================================
+from app.api.v1.routes import dependency
 
 from app.api.v1.routes import chat
 
+# ============================================================
+# Day 35 - Real-time WebSocket Chat
+# ============================================================
 
-# =========================================================
+from app.api.v1.routes import chat_ws
+
+
+# ============================================================
 # FastAPI Application
-# =========================================================
+# ============================================================
 
 app = FastAPI(
     title="TreeFlow AI API",
@@ -67,9 +80,9 @@ app = FastAPI(
 )
 
 
-# =========================================================
+# ============================================================
 # Health
-# =========================================================
+# ============================================================
 
 app.include_router(
     health.router,
@@ -78,9 +91,9 @@ app.include_router(
 )
 
 
-# =========================================================
+# ============================================================
 # Authentication
-# =========================================================
+# ============================================================
 
 app.include_router(
     auth.router,
@@ -89,9 +102,9 @@ app.include_router(
 )
 
 
-# =========================================================
+# ============================================================
 # Users
-# =========================================================
+# ============================================================
 
 app.include_router(
     users.router,
@@ -100,9 +113,9 @@ app.include_router(
 )
 
 
-# =========================================================
+# ============================================================
 # Companies
-# =========================================================
+# ============================================================
 
 app.include_router(
     company.router,
@@ -111,9 +124,9 @@ app.include_router(
 )
 
 
-# =========================================================
+# ============================================================
 # Departments
-# =========================================================
+# ============================================================
 
 app.include_router(
     department.router,
@@ -122,9 +135,9 @@ app.include_router(
 )
 
 
-# =========================================================
+# ============================================================
 # Teams
-# =========================================================
+# ============================================================
 
 app.include_router(
     teams.router,
@@ -133,9 +146,9 @@ app.include_router(
 )
 
 
-# =========================================================
+# ============================================================
 # Projects
-# =========================================================
+# ============================================================
 
 app.include_router(
     projects.router,
@@ -144,9 +157,9 @@ app.include_router(
 )
 
 
-# =========================================================
+# ============================================================
 # Tasks
-# =========================================================
+# ============================================================
 
 app.include_router(
     tasks.router,
@@ -155,9 +168,9 @@ app.include_router(
 )
 
 
-# =========================================================
+# ============================================================
 # Task Assignees
-# =========================================================
+# ============================================================
 
 app.include_router(
     task_assignees.router,
@@ -166,21 +179,9 @@ app.include_router(
 )
 
 
-# =========================================================
-# Subtask Progress
-# IMPORTANT: Keep before generic Subtasks router
-# =========================================================
-
-app.include_router(
-    subtask_progress.router,
-    prefix="/api/v1/subtasks",
-    tags=["Subtask Progress"],
-)
-
-
-# =========================================================
+# ============================================================
 # Subtasks
-# =========================================================
+# ============================================================
 
 app.include_router(
     subtasks.router,
@@ -189,21 +190,20 @@ app.include_router(
 )
 
 
-# =========================================================
-# Comment Replies
-# IMPORTANT: Keep before generic Comments router
-# =========================================================
+# ============================================================
+# Subtask Progress
+# ============================================================
 
 app.include_router(
-    comment_reply.router,
-    prefix="/api/v1/comments",
-    tags=["Comment Reply"],
+    subtask_progress.router,
+    prefix="/api/v1/subtasks",
+    tags=["Subtask Progress"],
 )
 
 
-# =========================================================
+# ============================================================
 # Comments
-# =========================================================
+# ============================================================
 
 app.include_router(
     comments.router,
@@ -212,9 +212,20 @@ app.include_router(
 )
 
 
-# =========================================================
+# ============================================================
+# Comment Replies
+# ============================================================
+
+app.include_router(
+    comment_reply.router,
+    prefix="/api/v1/comments",
+    tags=["Comment Reply"],
+)
+
+
+# ============================================================
 # Files
-# =========================================================
+# ============================================================
 
 app.include_router(
     files.router,
@@ -223,9 +234,9 @@ app.include_router(
 )
 
 
-# =========================================================
-# File Versions - Day 32
-# =========================================================
+# ============================================================
+# File Versions
+# ============================================================
 
 app.include_router(
     file_versions.router,
@@ -234,75 +245,9 @@ app.include_router(
 )
 
 
-# =========================================================
-# Task Progress
-# =========================================================
-
-app.include_router(
-    progress.router,
-    prefix="/api/v1/progress",
-    tags=["Task Progress"],
-)
-
-
-# =========================================================
-# Notifications
-# =========================================================
-
-app.include_router(
-    notification.router,
-    prefix="/api/v1/notification",
-    tags=["Notification"],
-)
-
-
-# =========================================================
-# Dashboard
-# =========================================================
-
-app.include_router(
-    dashboard.router,
-    prefix="/api/v1/dashboard",
-    tags=["Dashboard"],
-)
-
-
-# =========================================================
-# Reports & Analytics - Day 33
-# =========================================================
-
-app.include_router(
-    reports.router,
-    prefix="/api/v1/reports",
-    tags=["Reports & Analytics"],
-)
-
-
-# =========================================================
-# Chat & Collaboration - Day 34
-# =========================================================
-
-app.include_router(
-    chat.router,
-    prefix="/api/v1/chat",
-    tags=["Chat & Collaboration"],
-)
-
-
-# =========================================================
-# Activity Logs
-# =========================================================
-
-app.include_router(
-    activity_log.router,
-    prefix="/api/v1/activity",
-    tags=["Activity Logs"],
-)
-
-
-# =========================================================
+# ============================================================
 # File Types
-# =========================================================
+# ============================================================
 
 app.include_router(
     file_type.router,
@@ -311,31 +256,9 @@ app.include_router(
 )
 
 
-# =========================================================
-# File Restore
-# =========================================================
-
-app.include_router(
-    restore.router,
-    prefix="/api/v1/restore",
-    tags=["File Restore"],
-)
-
-
-# =========================================================
-# Trash
-# =========================================================
-
-app.include_router(
-    trash.router,
-    prefix="/api/v1/trash",
-    tags=["Trash"],
-)
-
-
-# =========================================================
+# ============================================================
 # File Share
-# =========================================================
+# ============================================================
 
 app.include_router(
     file_share.router,
@@ -344,9 +267,9 @@ app.include_router(
 )
 
 
-# =========================================================
-# Revoke Share
-# =========================================================
+# ============================================================
+# Revoke File Share
+# ============================================================
 
 app.include_router(
     revoke_share.router,
@@ -355,9 +278,31 @@ app.include_router(
 )
 
 
-# =========================================================
-# File Report
-# =========================================================
+# ============================================================
+# File Restore
+# ============================================================
+
+app.include_router(
+    restore.router,
+    prefix="/api/v1/restore",
+    tags=["File Restore"],
+)
+
+
+# ============================================================
+# Trash
+# ============================================================
+
+app.include_router(
+    trash.router,
+    prefix="/api/v1/trash",
+    tags=["Trash"],
+)
+
+
+# ============================================================
+# File Reports
+# ============================================================
 
 app.include_router(
     file_report.router,
@@ -366,9 +311,64 @@ app.include_router(
 )
 
 
-# =========================================================
+# ============================================================
+# Task Progress
+# ============================================================
+
+app.include_router(
+    progress.router,
+    prefix="/api/v1/progress",
+    tags=["Task Progress"],
+)
+
+
+# ============================================================
+# Notifications
+# ============================================================
+
+app.include_router(
+    notification.router,
+    prefix="/api/v1/notification",
+    tags=["Notification"],
+)
+
+
+# ============================================================
+# Activity Logs
+# ============================================================
+
+app.include_router(
+    activity_log.router,
+    prefix="/api/v1/activity",
+    tags=["Activity Logs"],
+)
+
+
+# ============================================================
+# Dashboard
+# ============================================================
+
+app.include_router(
+    dashboard.router,
+    prefix="/api/v1/dashboard",
+    tags=["Dashboard"],
+)
+
+
+# ============================================================
+# Reports & Analytics
+# ============================================================
+
+app.include_router(
+    reports.router,
+    prefix="/api/v1/reports",
+    tags=["Reports & Analytics"],
+)
+
+
+# ============================================================
 # Task Dependencies
-# =========================================================
+# ============================================================
 
 app.include_router(
     dependency.router,
@@ -377,9 +377,31 @@ app.include_router(
 )
 
 
-# =========================================================
+# ============================================================
+# Chat & Collaboration
+# ============================================================
+
+app.include_router(
+    chat.router,
+    prefix="/api/v1/chat",
+    tags=["Chat & Collaboration"],
+)
+
+
+# ============================================================
+# Day 35 - Real-time WebSocket Chat
+# ============================================================
+
+app.include_router(
+    chat_ws.router,
+    prefix="/api/v1",
+    tags=["Real-time Chat"],
+)
+
+
+# ============================================================
 # Root Endpoint
-# =========================================================
+# ============================================================
 
 @app.get("/")
 def root():
