@@ -61,12 +61,10 @@ from app.api.v1.routes import reports
 from app.api.v1.routes import dependency
 
 from app.api.v1.routes import chat
-
-# ============================================================
-# Day 35 - Real-time WebSocket Chat
-# ============================================================
-
 from app.api.v1.routes import chat_ws
+
+# AI Assistant
+from app.api.v1.routes import ai
 
 
 # ============================================================
@@ -268,7 +266,7 @@ app.include_router(
 
 
 # ============================================================
-# Revoke File Share
+# Revoke Share
 # ============================================================
 
 app.include_router(
@@ -301,7 +299,7 @@ app.include_router(
 
 
 # ============================================================
-# File Reports
+# File Report
 # ============================================================
 
 app.include_router(
@@ -389,13 +387,24 @@ app.include_router(
 
 
 # ============================================================
-# Day 35 - Real-time WebSocket Chat
+# Real-time WebSocket Chat
 # ============================================================
 
 app.include_router(
     chat_ws.router,
     prefix="/api/v1",
     tags=["Real-time Chat"],
+)
+
+
+# ============================================================
+# AI Assistant
+# ============================================================
+
+app.include_router(
+    ai.router,
+    prefix="/api/v1/ai",
+    tags=["AI Assistant"],
 )
 
 

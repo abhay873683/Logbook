@@ -42,8 +42,8 @@ from .notification import *
 # Activity Logs
 from .activity_log import *
 
-# ============================================================
-# Day 34 - Chat & Collaboration
-# ============================================================
-
+# Chat & Collaboration
 from .chat import *
+
+# AI Assistant
+from .ai import *
