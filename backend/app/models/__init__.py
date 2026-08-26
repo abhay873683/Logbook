@@ -36,17 +36,19 @@ from .file_version import *
 from .file_share import *
 from .file_type import *
 
+# Folder Management
+from .folder import *
+
 # Notifications
 from .notification import *
+from .notification_preference import *
 
-# Activity Logs
+# Activity / Event Logs
 from .activity_log import *
+from .event_log import *
 
 # Chat & Collaboration
 from .chat import *
 
 # AI Assistant
 from .ai import *
-
-from .notification_preference import *
-from .event_log import *

@@ -28,14 +28,21 @@ Base.metadata.create_all(bind=engine)
 from app.api.v1.routes import health
 from app.api.v1.routes import auth
 from app.api.v1.routes import users
+
 from app.api.v1.routes import company
 from app.api.v1.routes import department
 from app.api.v1.routes import teams
 
 from app.api.v1.routes import projects
+
 from app.api.v1.routes import tasks
 from app.api.v1.routes import task_assignees
 from app.api.v1.routes import subtasks
+
+from app.api.v1.routes import progress
+from app.api.v1.routes import subtask_progress
+
+from app.api.v1.routes import dependency
 
 from app.api.v1.routes import comments
 from app.api.v1.routes import comment_reply
@@ -49,8 +56,8 @@ from app.api.v1.routes import restore
 from app.api.v1.routes import trash
 from app.api.v1.routes import file_report
 
-from app.api.v1.routes import progress
-from app.api.v1.routes import subtask_progress
+# Day 39 - Folder Management
+from app.api.v1.routes import folders
 
 from app.api.v1.routes import notification
 from app.api.v1.routes import activity_log
@@ -58,16 +65,10 @@ from app.api.v1.routes import activity_log
 from app.api.v1.routes import dashboard
 from app.api.v1.routes import reports
 
-from app.api.v1.routes import dependency
-
 from app.api.v1.routes import chat
 from app.api.v1.routes import chat_ws
 
 from app.api.v1.routes import ai
-
-# ============================================================
-# Day 38 - Notification Preferences / Events / WebSocket
-# ============================================================
 
 from app.api.v1.routes import notification_events
 from app.api.v1.routes import notification_ws
@@ -206,6 +207,28 @@ app.include_router(
 
 
 # ============================================================
+# Task Progress
+# ============================================================
+
+app.include_router(
+    progress.router,
+    prefix="/api/v1/progress",
+    tags=["Task Progress"],
+)
+
+
+# ============================================================
+# Task Dependencies
+# ============================================================
+
+app.include_router(
+    dependency.router,
+    prefix="/api/v1/dependencies",
+    tags=["Dependencies"],
+)
+
+
+# ============================================================
 # Comments
 # ============================================================
 
@@ -246,6 +269,17 @@ app.include_router(
     file_versions.router,
     prefix="/api/v1/files",
     tags=["File Versions"],
+)
+
+
+# ============================================================
+# Folder Management - Day 39
+# ============================================================
+
+app.include_router(
+    folders.router,
+    prefix="/api/v1/files/folders",
+    tags=["Folders"],
 )
 
 
@@ -316,17 +350,6 @@ app.include_router(
 
 
 # ============================================================
-# Task Progress
-# ============================================================
-
-app.include_router(
-    progress.router,
-    prefix="/api/v1/progress",
-    tags=["Task Progress"],
-)
-
-
-# ============================================================
 # Existing Notifications
 # ============================================================
 
@@ -338,7 +361,7 @@ app.include_router(
 
 
 # ============================================================
-# Day 38 - Notification Preferences & Event Logs
+# Notification Preferences & Event Logs
 # ============================================================
 
 app.include_router(
@@ -349,7 +372,7 @@ app.include_router(
 
 
 # ============================================================
-# Day 38 - Real-time Notification WebSocket
+# Real-time Notification WebSocket
 # ============================================================
 
 app.include_router(
@@ -389,17 +412,6 @@ app.include_router(
     reports.router,
     prefix="/api/v1/reports",
     tags=["Reports & Analytics"],
-)
-
-
-# ============================================================
-# Task Dependencies
-# ============================================================
-
-app.include_router(
-    dependency.router,
-    prefix="/api/v1/dependencies",
-    tags=["Dependencies"],
 )
 
 
