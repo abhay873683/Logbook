@@ -33,10 +33,7 @@ from app.api.v1.routes import task_assignees
 from app.api.v1.routes import subtasks
 from app.api.v1.routes import comments
 from app.api.v1.routes import files
-
-# Day 32 - File Versions
 from app.api.v1.routes import file_versions
-
 from app.api.v1.routes import progress
 from app.api.v1.routes import notification
 from app.api.v1.routes import dashboard
@@ -50,6 +47,9 @@ from app.api.v1.routes import file_share
 from app.api.v1.routes import revoke_share
 from app.api.v1.routes import file_report
 from app.api.v1.routes import dependency
+
+# Day 33 - Reports & Analytics
+from app.api.v1.routes import reports
 
 
 # =========================================================
@@ -260,6 +260,17 @@ app.include_router(
     dashboard.router,
     prefix="/api/v1/dashboard",
     tags=["Dashboard"],
+)
+
+
+# =========================================================
+# Reports & Analytics - Day 33
+# =========================================================
+
+app.include_router(
+    reports.router,
+    prefix="/api/v1/reports",
+    tags=["Reports & Analytics"],
 )
 
 
