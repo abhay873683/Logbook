@@ -7,28 +7,7 @@ from app.core.database import Base, engine
 # Import All Models
 # =========================================================
 
-from app.models.user import User
-from app.models.company import Company
-from app.models.department import Department
-from app.models.project import Project
-from app.models.task import Task
-from app.models.subtask import Subtask
-from app.models.comment import Comment
-from app.models.file import File
-from app.models.notification import Notification
-from app.models.task_progress import TaskProgress
-from app.models.subtask_progress import SubtaskProgress
-from app.models.comment_reply import CommentReply
-from app.models.activity_log import ActivityLog
-from app.models.file_type import FileType
-from app.models.file_share import FileShare
-from app.models.dependency import Dependency
-
-# Day 27
-from app.models.team import Team
-
-# Day 29
-from app.models.task_assignee import TaskAssignee
+from app.models import *
 
 
 # =========================================================
@@ -54,6 +33,10 @@ from app.api.v1.routes import task_assignees
 from app.api.v1.routes import subtasks
 from app.api.v1.routes import comments
 from app.api.v1.routes import files
+
+# Day 32 - File Versions
+from app.api.v1.routes import file_versions
+
 from app.api.v1.routes import progress
 from app.api.v1.routes import notification
 from app.api.v1.routes import dashboard
@@ -137,7 +120,6 @@ app.include_router(
 
 # =========================================================
 # Teams
-# Day 27
 # =========================================================
 
 app.include_router(
@@ -171,7 +153,6 @@ app.include_router(
 
 # =========================================================
 # Task Assignees
-# Day 29 - Multiple Assignees
 # =========================================================
 
 app.include_router(
@@ -183,7 +164,7 @@ app.include_router(
 
 # =========================================================
 # Subtask Progress
-# IMPORTANT: register before generic Subtasks router
+# IMPORTANT: Register before generic Subtasks router
 # =========================================================
 
 app.include_router(
@@ -206,7 +187,7 @@ app.include_router(
 
 # =========================================================
 # Comment Replies
-# IMPORTANT: register before generic Comments router
+# IMPORTANT: Register before generic Comments router
 # =========================================================
 
 app.include_router(
@@ -235,6 +216,17 @@ app.include_router(
     files.router,
     prefix="/api/v1/files",
     tags=["Files"],
+)
+
+
+# =========================================================
+# File Versions - Day 32
+# =========================================================
+
+app.include_router(
+    file_versions.router,
+    prefix="/api/v1/files",
+    tags=["File Versions"],
 )
 
 
@@ -355,7 +347,7 @@ app.include_router(
 app.include_router(
     dependency.router,
     prefix="/api/v1/dependencies",
-    tags=["Task Dependencies"],
+    tags=["Dependencies"],
 )
 
 

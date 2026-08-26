@@ -1,16 +1,43 @@
-from .user import User
-from .company import Company
-from .department import Department
-from .project import Project
-from .task import Task
-from .subtask import Subtask
-from .comment import Comment
-from .comment_reply import CommentReply
-from .file import File
-from .notification import Notification
-from .task_progress import TaskProgress
-from .subtask_progress import SubtaskProgress
-from .activity_log import ActivityLog
-from .dependency import Dependency
-from .team import Team
-from .task_assignee import TaskAssignee
+# ============================================================
+# TreeFlow AI - Models Package
+# ============================================================
+
+# User
+from .user import *
+
+# Company / Organization
+from .company import *
+from .department import *
+from .team import *
+
+# Project
+from .project import *
+from .project_user import *
+
+# Task
+from .task import *
+from .task_assignee import *
+from .subtask import *
+
+# Progress
+from .task_progress import *
+from .subtask_progress import *
+
+# Dependencies
+from .dependency import *
+
+# Comments
+from .comment import *
+from .comment_reply import *
+
+# Files
+from .file import *
+from .file_version import *
+from .file_share import *
+from .file_type import *
+
+# Notifications
+from .notification import *
+
+# Activity Logs
+from .activity_log import *
