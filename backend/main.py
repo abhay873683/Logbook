@@ -73,6 +73,9 @@ from app.api.v1.routes import ai
 from app.api.v1.routes import notification_events
 from app.api.v1.routes import notification_ws
 
+# Day 41 - Time Tracking
+from app.api.v1.routes import time_tracking
+
 
 # ============================================================
 # FastAPI Application
@@ -445,6 +448,17 @@ app.include_router(
     ai.router,
     prefix="/api/v1/ai",
     tags=["AI Assistant"],
+)
+
+
+# ============================================================
+# Time Tracking - Day 41
+# ============================================================
+
+app.include_router(
+    time_tracking.router,
+    prefix="/api/v1/time-tracking",
+    tags=["Time Tracking"],
 )
 
 
