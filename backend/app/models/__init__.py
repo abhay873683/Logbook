@@ -37,3 +37,8 @@ from .timesheet import Timesheet
 # Day 42 - Dashboard & Widgets
 from .dashboard import Dashboard
 from .widget import Widget
+
+# Day 43 - Calendar & Events
+from .event import Event
+from .event_participant import EventParticipant
+from .event_recurrence import EventRecurrence

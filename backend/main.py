@@ -70,6 +70,7 @@ from app.api.v1.routes import chat_ws
 
 from app.api.v1.routes import ai
 
+# Day 38 - Notification Events / WebSocket
 from app.api.v1.routes import notification_events
 from app.api.v1.routes import notification_ws
 
@@ -79,6 +80,9 @@ from app.api.v1.routes import time_tracking
 # Day 42 - Dashboard & Widgets
 from app.api.v1.routes import dashboards
 from app.api.v1.routes import widgets
+
+# Day 43 - Calendar & Events
+from app.api.v1.routes import events
 
 
 # ============================================================
@@ -357,7 +361,7 @@ app.include_router(
 
 
 # ============================================================
-# Existing Notifications
+# Notifications
 # ============================================================
 
 app.include_router(
@@ -368,7 +372,12 @@ app.include_router(
 
 
 # ============================================================
-# Notification Preferences & Event Logs
+# Notification Preferences & Event Logs - Day 38
+#
+# IMPORTANT:
+# notification_events already creates:
+# /api/v1/events/log
+# /api/v1/events/
 # ============================================================
 
 app.include_router(
@@ -485,6 +494,21 @@ app.include_router(
     time_tracking.router,
     prefix="/api/v1/time-tracking",
     tags=["Time Tracking"],
+)
+
+
+# ============================================================
+# Day 43 - Calendar & Events
+#
+# IMPORTANT:
+# Do NOT use /api/v1/events here because Day 38 Notification
+# Events already uses that URL.
+# ============================================================
+
+app.include_router(
+    events.router,
+    prefix="/api/v1/calendar-events",
+    tags=["Calendar & Events"],
 )
 
 
