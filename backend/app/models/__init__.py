@@ -33,3 +33,7 @@ from .report_schedule import ReportSchedule
 from .time_log import TimeLog
 from .timer_session import TimerSession
 from .timesheet import Timesheet
+
+# Day 42 - Dashboard & Widgets
+from .dashboard import Dashboard
+from .widget import Widget

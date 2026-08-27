@@ -76,6 +76,10 @@ from app.api.v1.routes import notification_ws
 # Day 41 - Time Tracking
 from app.api.v1.routes import time_tracking
 
+# Day 42 - Dashboard & Widgets
+from app.api.v1.routes import dashboards
+from app.api.v1.routes import widgets
+
 
 # ============================================================
 # FastAPI Application
@@ -397,13 +401,35 @@ app.include_router(
 
 
 # ============================================================
-# Dashboard
+# Existing Dashboard
 # ============================================================
 
 app.include_router(
     dashboard.router,
     prefix="/api/v1/dashboard",
     tags=["Dashboard"],
+)
+
+
+# ============================================================
+# Day 42 - Custom Dashboards
+# ============================================================
+
+app.include_router(
+    dashboards.router,
+    prefix="/api/v1/dashboards",
+    tags=["Dashboards"],
+)
+
+
+# ============================================================
+# Day 42 - Dashboard Widgets
+# ============================================================
+
+app.include_router(
+    widgets.router,
+    prefix="/api/v1/widgets",
+    tags=["Widgets"],
 )
 
 
@@ -452,7 +478,7 @@ app.include_router(
 
 
 # ============================================================
-# Time Tracking - Day 41
+# Day 41 - Time Tracking
 # ============================================================
 
 app.include_router(
