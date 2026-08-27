@@ -9,6 +9,10 @@ from app.schemas.notification import (
 )
 
 
+# =========================================================
+# VALIDATE NOTIFICATION USER
+# =========================================================
+
 def validate_notification_user(
     db: Session,
     user_id: int,
@@ -28,6 +32,10 @@ def validate_notification_user(
     return user
 
 
+# =========================================================
+# GET ALL NOTIFICATIONS
+# =========================================================
+
 def get_all_notifications(
     db: Session,
     user_id: int | None = None,
@@ -45,6 +53,10 @@ def get_all_notifications(
         .all()
     )
 
+
+# =========================================================
+# GET NOTIFICATION BY ID
+# =========================================================
 
 def get_notification_by_id(
     db: Session,
@@ -65,6 +77,10 @@ def get_notification_by_id(
 
     return notification
 
+
+# =========================================================
+# CREATE NOTIFICATION
+# =========================================================
 
 def create_notification(
     db: Session,
@@ -90,6 +106,10 @@ def create_notification(
 
     return new_notification
 
+
+# =========================================================
+# UPDATE NOTIFICATION
+# =========================================================
 
 def update_notification(
     db: Session,
@@ -118,6 +138,10 @@ def update_notification(
     return notification
 
 
+# =========================================================
+# MARK NOTIFICATION AS READ
+# =========================================================
+
 def mark_notification_as_read(
     db: Session,
     notification_id: int,
@@ -134,6 +158,32 @@ def mark_notification_as_read(
 
     return notification
 
+
+# =========================================================
+# MARK NOTIFICATION AS UNREAD
+# DAY 44
+# =========================================================
+
+def mark_notification_as_unread(
+    db: Session,
+    notification_id: int,
+):
+    notification = get_notification_by_id(
+        db,
+        notification_id,
+    )
+
+    notification.is_read = False
+
+    db.commit()
+    db.refresh(notification)
+
+    return notification
+
+
+# =========================================================
+# MARK ALL NOTIFICATIONS AS READ
+# =========================================================
 
 def mark_all_notifications_as_read(
     db: Session,
@@ -161,6 +211,33 @@ def mark_all_notifications_as_read(
         )
     }
 
+
+# =========================================================
+# GET UNREAD NOTIFICATION COUNT
+# DAY 44
+# =========================================================
+
+def get_unread_notification_count(
+    db: Session,
+    user_id: int,
+):
+    count = (
+        db.query(Notification)
+        .filter(
+            Notification.user_id == user_id,
+            Notification.is_read.is_(False),
+        )
+        .count()
+    )
+
+    return {
+        "unread_count": count
+    }
+
+
+# =========================================================
+# DELETE NOTIFICATION
+# =========================================================
 
 def delete_notification(
     db: Session,

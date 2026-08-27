@@ -42,3 +42,6 @@ from .widget import Widget
 from .event import Event
 from .event_participant import EventParticipant
 from .event_recurrence import EventRecurrence
+
+# Day 44 - Notifications & Reminders
+from .reminder import Reminder

@@ -56,7 +56,7 @@ from app.api.v1.routes import restore
 from app.api.v1.routes import trash
 from app.api.v1.routes import file_report
 
-# Day 39 - Folder Management
+# Day 39
 from app.api.v1.routes import folders
 
 from app.api.v1.routes import notification
@@ -70,7 +70,7 @@ from app.api.v1.routes import chat_ws
 
 from app.api.v1.routes import ai
 
-# Day 38 - Notification Events / WebSocket
+# Day 38 - Notification Preferences / Events / WebSocket
 from app.api.v1.routes import notification_events
 from app.api.v1.routes import notification_ws
 
@@ -83,6 +83,9 @@ from app.api.v1.routes import widgets
 
 # Day 43 - Calendar & Events
 from app.api.v1.routes import events
+
+# Day 44 - Reminders
+from app.api.v1.routes import reminders
 
 
 # ============================================================
@@ -229,7 +232,7 @@ app.include_router(
 
 
 # ============================================================
-# Task Dependencies
+# Dependencies
 # ============================================================
 
 app.include_router(
@@ -284,7 +287,7 @@ app.include_router(
 
 
 # ============================================================
-# Folder Management - Day 39
+# Day 39 - Folders
 # ============================================================
 
 app.include_router(
@@ -328,7 +331,7 @@ app.include_router(
 
 
 # ============================================================
-# File Restore
+# Restore
 # ============================================================
 
 app.include_router(
@@ -372,12 +375,18 @@ app.include_router(
 
 
 # ============================================================
-# Notification Preferences & Event Logs - Day 38
-#
-# IMPORTANT:
-# notification_events already creates:
-# /api/v1/events/log
-# /api/v1/events/
+# Day 44 - Reminders
+# ============================================================
+
+app.include_router(
+    reminders.router,
+    prefix="/api/v1/reminders",
+    tags=["Reminders"],
+)
+
+
+# ============================================================
+# Notification Preferences & Event Logs
 # ============================================================
 
 app.include_router(
@@ -410,7 +419,7 @@ app.include_router(
 
 
 # ============================================================
-# Existing Dashboard
+# Dashboard
 # ============================================================
 
 app.include_router(
@@ -432,7 +441,7 @@ app.include_router(
 
 
 # ============================================================
-# Day 42 - Dashboard Widgets
+# Day 42 - Widgets
 # ============================================================
 
 app.include_router(
@@ -465,7 +474,7 @@ app.include_router(
 
 
 # ============================================================
-# Real-time WebSocket Chat
+# Real-time Chat WebSocket
 # ============================================================
 
 app.include_router(
@@ -499,10 +508,6 @@ app.include_router(
 
 # ============================================================
 # Day 43 - Calendar & Events
-#
-# IMPORTANT:
-# Do NOT use /api/v1/events here because Day 38 Notification
-# Events already uses that URL.
 # ============================================================
 
 app.include_router(

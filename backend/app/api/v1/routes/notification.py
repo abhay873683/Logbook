@@ -23,7 +23,9 @@ from app.services.notification_service import (
     create_notification,
     update_notification,
     mark_notification_as_read,
+    mark_notification_as_unread,
     mark_all_notifications_as_read,
+    get_unread_notification_count,
     delete_notification,
 )
 
@@ -51,7 +53,9 @@ def read_notifications(
 
 # =========================================================
 # MARK ALL AS READ
-# IMPORTANT: Keep before /{notification_id}
+#
+# IMPORTANT:
+# Static routes must remain before /{notification_id}
 # =========================================================
 
 @router.put("/mark-all-read")
@@ -66,29 +70,21 @@ def mark_all_as_read(
 
 
 # =========================================================
-# GET NOTIFICATION BY ID
+# DAY 44 - GET UNREAD NOTIFICATION COUNT
+#
+# IMPORTANT:
+# Keep before /{notification_id}
 # =========================================================
 
-@router.get(
-    "/{notification_id}",
-    response_model=NotificationResponse,
-)
-def read_notification(
-    notification_id: int,
+@router.get("/unread/count/")
+def unread_notification_count(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    try:
-        return get_notification_by_id(
-            db,
-            notification_id,
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=404,
-            detail=str(e),
-        )
+    return get_unread_notification_count(
+        db,
+        current_user.id,
+    )
 
 
 # =========================================================
@@ -119,6 +115,40 @@ def create_new_notification(
 
 
 # =========================================================
+# GET NOTIFICATION BY ID
+# =========================================================
+
+@router.get(
+    "/{notification_id}",
+    response_model=NotificationResponse,
+)
+def read_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        notification = get_notification_by_id(
+            db,
+            notification_id,
+        )
+
+        if notification.user_id != current_user.id:
+            raise HTTPException(
+                status_code=404,
+                detail="Notification not found",
+            )
+
+        return notification
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
+
+
+# =========================================================
 # UPDATE NOTIFICATION
 # =========================================================
 
@@ -133,6 +163,17 @@ def update_existing_notification(
     current_user: User = Depends(get_current_user),
 ):
     try:
+        existing = get_notification_by_id(
+            db,
+            notification_id,
+        )
+
+        if existing.user_id != current_user.id:
+            raise HTTPException(
+                status_code=404,
+                detail="Notification not found",
+            )
+
         return update_notification(
             db,
             notification_id,
@@ -147,7 +188,7 @@ def update_existing_notification(
 
 
 # =========================================================
-# MARK ONE AS READ
+# MARK ONE NOTIFICATION AS READ
 # =========================================================
 
 @router.put(
@@ -160,7 +201,55 @@ def read_notification_update(
     current_user: User = Depends(get_current_user),
 ):
     try:
+        notification = get_notification_by_id(
+            db,
+            notification_id,
+        )
+
+        if notification.user_id != current_user.id:
+            raise HTTPException(
+                status_code=404,
+                detail="Notification not found",
+            )
+
         return mark_notification_as_read(
+            db,
+            notification_id,
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
+
+
+# =========================================================
+# DAY 44 - MARK ONE NOTIFICATION AS UNREAD
+# =========================================================
+
+@router.put(
+    "/{notification_id}/unread",
+    response_model=NotificationResponse,
+)
+def unread_notification_update(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        notification = get_notification_by_id(
+            db,
+            notification_id,
+        )
+
+        if notification.user_id != current_user.id:
+            raise HTTPException(
+                status_code=404,
+                detail="Notification not found",
+            )
+
+        return mark_notification_as_unread(
             db,
             notification_id,
         )
@@ -183,6 +272,17 @@ def delete_existing_notification(
     current_user: User = Depends(get_current_user),
 ):
     try:
+        notification = get_notification_by_id(
+            db,
+            notification_id,
+        )
+
+        if notification.user_id != current_user.id:
+            raise HTTPException(
+                status_code=404,
+                detail="Notification not found",
+            )
+
         return delete_notification(
             db,
             notification_id,
