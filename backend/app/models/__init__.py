@@ -52,3 +52,6 @@ from .chat import *
 
 # AI Assistant
 from .ai import *
+
+from .report import Report
+from .report_schedule import ReportSchedule
