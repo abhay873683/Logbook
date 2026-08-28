@@ -1,10 +1,11 @@
-from sqlalchemy import (
+﻿from sqlalchemy import (
     Column,
     Date,
     DateTime,
     ForeignKey,
     Integer,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.sql import func
@@ -42,14 +43,12 @@ class Timesheet(Base):
         index=True,
     )
 
-    # Total tracked time for this day in seconds
     total_seconds = Column(
         Integer,
         nullable=False,
         default=0,
     )
 
-    # draft -> submitted -> approved
     status = Column(
         String(30),
         nullable=False,
@@ -70,6 +69,27 @@ class Timesheet(Base):
     approved_by = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    rejected_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    rejected_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    rejection_reason = Column(
+        Text,
+        nullable=True,
+    )
+
+    notes = Column(
+        Text,
         nullable=True,
     )
 
