@@ -1,4 +1,8 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    WebSocket,
+    WebSocketDisconnect,
+)
 
 from app.core.database import SessionLocal
 from app.core.websocket.manager import manager
@@ -11,14 +15,32 @@ from app.models.chat import (
     Message,
 )
 
+from app.utils.token import verify_token
+
 
 router = APIRouter()
 
 
-def get_user(db, user_id: int):
+async def close_policy_violation(
+    websocket: WebSocket,
+):
+    try:
+        await websocket.close(
+            code=1008
+        )
+    except Exception:
+        pass
+
+
+def get_user(
+    db,
+    user_id: int,
+):
     return (
         db.query(User)
-        .filter(User.id == user_id)
+        .filter(
+            User.id == user_id
+        )
         .first()
     )
 
@@ -31,7 +53,9 @@ def validate_room_access(
     if "_" not in room_id:
         return False
 
-    room_type, room_value = room_id.split("_", 1)
+    room_type, room_value = (
+        room_id.split("_", 1)
+    )
 
     try:
         chat_id = int(room_value)
@@ -42,8 +66,10 @@ def validate_room_access(
         return (
             db.query(ChannelMember)
             .filter(
-                ChannelMember.channel_id == chat_id,
-                ChannelMember.user_id == user_id,
+                ChannelMember.channel_id
+                == chat_id,
+                ChannelMember.user_id
+                == user_id,
             )
             .first()
             is not None
@@ -53,8 +79,10 @@ def validate_room_access(
         return (
             db.query(GroupMember)
             .filter(
-                GroupMember.group_id == chat_id,
-                GroupMember.user_id == user_id,
+                GroupMember.group_id
+                == chat_id,
+                GroupMember.user_id
+                == user_id,
             )
             .first()
             is not None
@@ -63,7 +91,10 @@ def validate_room_access(
     if room_type == "direct":
         conversation = (
             db.query(DirectMessage)
-            .filter(DirectMessage.id == chat_id)
+            .filter(
+                DirectMessage.id
+                == chat_id
+            )
             .first()
         )
 
@@ -78,18 +109,80 @@ def validate_room_access(
     return False
 
 
-@router.websocket("/ws/chat/{user_id}")
+@router.websocket(
+    "/ws/chat/{user_id}"
+)
 async def websocket_chat(
     websocket: WebSocket,
     user_id: int,
 ):
     db = SessionLocal()
+    connected = False
 
     try:
-        user = get_user(db, user_id)
+        token = (
+            websocket.query_params.get(
+                "token"
+            )
+        )
 
-        if not user:
-            await websocket.close(code=1008)
+        if not token:
+            await close_policy_violation(
+                websocket
+            )
+            return
+
+        payload = verify_token(
+            token
+        )
+
+        if payload is None:
+            await close_policy_violation(
+                websocket
+            )
+            return
+
+        token_user_id = payload.get(
+            "sub"
+        )
+
+        if token_user_id is None:
+            await close_policy_violation(
+                websocket
+            )
+            return
+
+        try:
+            token_user_id = int(
+                token_user_id
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            await close_policy_violation(
+                websocket
+            )
+            return
+
+        if token_user_id != user_id:
+            await close_policy_violation(
+                websocket
+            )
+            return
+
+        user = get_user(
+            db,
+            user_id,
+        )
+
+        if (
+            not user
+            or not user.is_active
+        ):
+            await close_policy_violation(
+                websocket
+            )
             return
 
         await manager.connect(
@@ -97,22 +190,44 @@ async def websocket_chat(
             websocket,
         )
 
+        connected = True
+
         await manager.send_personal_message(
             user_id,
             {
                 "type": "connection",
-                "message": "WebSocket connected",
+                "message": (
+                    "Secure chat WebSocket connected"
+                ),
                 "user_id": user_id,
             },
         )
 
         while True:
-            data = await websocket.receive_json()
+            data = (
+                await websocket.receive_json()
+            )
 
-            action = data.get("action")
+            action = data.get(
+                "action"
+            )
 
-            if action == "join_room":
-                room_id = str(data.get("room_id", ""))
+            if action == "ping":
+                await manager.send_personal_message(
+                    user_id,
+                    {
+                        "type": "pong",
+                        "user_id": user_id,
+                    },
+                )
+
+            elif action == "join_room":
+                room_id = str(
+                    data.get(
+                        "room_id",
+                        "",
+                    )
+                )
 
                 if not validate_room_access(
                     db,
@@ -123,7 +238,10 @@ async def websocket_chat(
                         user_id,
                         {
                             "type": "error",
-                            "message": "Invalid room or access denied",
+                            "message": (
+                                "Invalid room or "
+                                "access denied"
+                            ),
                         },
                     )
                     continue
@@ -143,7 +261,12 @@ async def websocket_chat(
                 )
 
             elif action == "leave_room":
-                room_id = str(data.get("room_id", ""))
+                room_id = str(
+                    data.get(
+                        "room_id",
+                        "",
+                    )
+                )
 
                 manager.leave_room(
                     user_id,
@@ -159,15 +282,45 @@ async def websocket_chat(
                 )
 
             elif action == "send_message":
-                room_id = str(data.get("room_id", ""))
-                content = str(data.get("message", "")).strip()
+                room_id = str(
+                    data.get(
+                        "room_id",
+                        "",
+                    )
+                )
+
+                content = str(
+                    data.get(
+                        "message",
+                        "",
+                    )
+                ).strip()
 
                 if not content:
                     await manager.send_personal_message(
                         user_id,
                         {
                             "type": "error",
-                            "message": "Message cannot be empty",
+                            "message": (
+                                "Message cannot be empty"
+                            ),
+                        },
+                    )
+                    continue
+
+                if not validate_room_access(
+                    db,
+                    user_id,
+                    room_id,
+                ):
+                    await manager.send_personal_message(
+                        user_id,
+                        {
+                            "type": "error",
+                            "message": (
+                                "Invalid room or "
+                                "access denied"
+                            ),
                         },
                     )
                     continue
@@ -180,13 +333,24 @@ async def websocket_chat(
                         user_id,
                         {
                             "type": "error",
-                            "message": "Join the room before sending messages",
+                            "message": (
+                                "Join the room before "
+                                "sending messages"
+                            ),
                         },
                     )
                     continue
 
-                room_type, room_value = room_id.split("_", 1)
-                chat_id = int(room_value)
+                room_type, room_value = (
+                    room_id.split(
+                        "_",
+                        1,
+                    )
+                )
+
+                chat_id = int(
+                    room_value
+                )
 
                 message = Message(
                     chat_type=room_type,
@@ -205,10 +369,14 @@ async def websocket_chat(
                     room_id,
                     {
                         "type": "message",
-                        "message_id": message.id,
+                        "message_id": (
+                            message.id
+                        ),
                         "room_id": room_id,
                         "sender_id": user_id,
-                        "content": message.content,
+                        "content": (
+                            message.content
+                        ),
                         "created_at": (
                             message.created_at.isoformat()
                             if message.created_at
@@ -218,11 +386,23 @@ async def websocket_chat(
                 )
 
             elif action == "typing":
-                room_id = str(data.get("room_id", ""))
+                room_id = str(
+                    data.get(
+                        "room_id",
+                        "",
+                    )
+                )
 
-                if manager.is_room_member(
-                    user_id,
-                    room_id,
+                if (
+                    validate_room_access(
+                        db,
+                        user_id,
+                        room_id,
+                    )
+                    and manager.is_room_member(
+                        user_id,
+                        room_id,
+                    )
                 ):
                     await manager.broadcast(
                         room_id,
@@ -231,30 +411,51 @@ async def websocket_chat(
                             "room_id": room_id,
                             "user_id": user_id,
                             "is_typing": bool(
-                                data.get("is_typing", True)
+                                data.get(
+                                    "is_typing",
+                                    True,
+                                )
                             ),
                         },
                     )
+
+            elif action == "status":
+                await manager.send_personal_message(
+                    user_id,
+                    {
+                        "type": "status",
+                        "user_id": user_id,
+                        "connected": True,
+                    },
+                )
 
             else:
                 await manager.send_personal_message(
                     user_id,
                     {
                         "type": "error",
-                        "message": "Invalid WebSocket action",
+                        "message": (
+                            "Invalid WebSocket action"
+                        ),
                     },
                 )
 
     except WebSocketDisconnect:
-        manager.disconnect(user_id)
+        pass
 
     except Exception:
-        manager.disconnect(user_id)
-
-        try:
-            await websocket.close(code=1011)
-        except Exception:
-            pass
+        if connected:
+            try:
+                await websocket.close(
+                    code=1011
+                )
+            except Exception:
+                pass
 
     finally:
+        if connected:
+            manager.disconnect(
+                user_id
+            )
+
         db.close()
