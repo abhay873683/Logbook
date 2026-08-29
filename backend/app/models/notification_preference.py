@@ -21,13 +21,26 @@ class NotificationPreference(Base):
 
     user_id = Column(
         Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey(
+            "users.id",
+            ondelete="CASCADE",
+        ),
         nullable=False,
         unique=True,
         index=True,
     )
 
+    # --------------------------------------------------------
+    # CHANNEL PREFERENCES
+    # --------------------------------------------------------
+
     email_notifications = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+
+    push_notifications = Column(
         Boolean,
         default=True,
         nullable=False,
@@ -38,6 +51,10 @@ class NotificationPreference(Base):
         default=True,
         nullable=False,
     )
+
+    # --------------------------------------------------------
+    # CATEGORY PREFERENCES
+    # --------------------------------------------------------
 
     task_notifications = Column(
         Boolean,
@@ -63,6 +80,24 @@ class NotificationPreference(Base):
         nullable=False,
     )
 
+    security_notifications = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+
+    approval_notifications = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+
+    general_notifications = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -75,3 +110,11 @@ class NotificationPreference(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    def __repr__(self):
+        return (
+            "<NotificationPreference("
+            f"id={self.id}, "
+            f"user_id={self.user_id}"
+            ")>"
+        )

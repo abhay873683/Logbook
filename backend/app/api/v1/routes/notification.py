@@ -5,6 +5,7 @@ from fastapi import (
     Depends,
     HTTPException,
     Query,
+    status,
 )
 
 from sqlalchemy.orm import Session
@@ -23,6 +24,10 @@ from app.schemas.notification import (
     NotificationResponse,
     NotificationStatsResponse,
     NotificationUpdate,
+)
+
+from app.services.notification_delivery_service import (
+    deliver_notification_in_app,
 )
 
 from app.services.notification_priority_service import (
@@ -56,21 +61,29 @@ PRIVILEGED_ROLES = {
 
 
 def is_privileged(
-    current_user: User,
+    user: User,
 ):
-    role = (
-        current_user.role or "user"
-    ).lower()
-
-    return role in PRIVILEGED_ROLES
+    return (
+        str(user.role).strip().lower()
+        in PRIVILEGED_ROLES
+    )
 
 
 def require_owner(
-    notification,
+    db: Session,
+    notification_id: int,
     current_user: User,
 ):
+    notification = (
+        get_notification_by_id(
+            db,
+            notification_id,
+        )
+    )
+
     if (
-        notification.user_id
+        notification is None
+        or notification.user_id
         != current_user.id
     ):
         raise HTTPException(
@@ -78,23 +91,35 @@ def require_owner(
             detail="Notification not found",
         )
 
+    return notification
+
 
 @router.get(
     "/",
-    response_model=list[
-        NotificationResponse
-    ],
+    response_model=list[NotificationResponse],
 )
 def read_notifications(
-    is_read: bool | None = None,
-    type: str | None = Query(
-        default=None,
+    is_read: bool | None = Query(
+        default=None
     ),
-    priority: str | None = None,
-    category: str | None = None,
-    source: str | None = None,
-    start_date: datetime | None = None,
-    end_date: datetime | None = None,
+    type: str | None = Query(
+        default=None
+    ),
+    priority: str | None = Query(
+        default=None
+    ),
+    category: str | None = Query(
+        default=None
+    ),
+    source: str | None = Query(
+        default=None
+    ),
+    start_date: datetime | None = Query(
+        default=None
+    ),
+    end_date: datetime | None = Query(
+        default=None
+    ),
     skip: int = Query(
         default=0,
         ge=0,
@@ -109,10 +134,22 @@ def read_notifications(
         get_current_user
     ),
 ):
+    notification_type = (
+        type.strip().lower()
+        if type
+        else None
+    )
+
+    normalized_priority = (
+        priority.strip().lower()
+        if priority
+        else None
+    )
+
     if (
-        type
-        and type not in
-        ALLOWED_NOTIFICATION_TYPES
+        notification_type
+        and notification_type
+        not in ALLOWED_NOTIFICATION_TYPES
     ):
         raise HTTPException(
             status_code=400,
@@ -120,9 +157,9 @@ def read_notifications(
         )
 
     if (
-        priority
-        and priority not in
-        ALLOWED_PRIORITIES
+        normalized_priority
+        and normalized_priority
+        not in ALLOWED_PRIORITIES
     ):
         raise HTTPException(
             status_code=400,
@@ -146,8 +183,10 @@ def read_notifications(
         db=db,
         user_id=current_user.id,
         is_read=is_read,
-        notification_type=type,
-        priority=priority,
+        notification_type=(
+            notification_type
+        ),
+        priority=normalized_priority,
         category=category,
         source=source,
         start_date=start_date,
@@ -161,7 +200,7 @@ def read_notifications(
     "/stats/",
     response_model=NotificationStatsResponse,
 )
-def notification_stats(
+def read_notification_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(
         get_current_user
@@ -176,48 +215,68 @@ def notification_stats(
 @router.get(
     "/unread/count/",
 )
-def unread_notification_count(
+def read_unread_count(
     db: Session = Depends(get_db),
     current_user: User = Depends(
         get_current_user
     ),
 ):
-    return get_unread_notification_count(
-        db,
-        current_user.id,
-    )
+    return {
+        "unread_count": (
+            get_unread_notification_count(
+                db,
+                current_user.id,
+            )
+        )
+    }
 
 
 @router.put(
     "/mark-all-read",
 )
-def mark_all_as_read(
+def mark_all_read(
     db: Session = Depends(get_db),
     current_user: User = Depends(
         get_current_user
     ),
 ):
-    return mark_all_notifications_as_read(
-        db,
-        current_user.id,
+    updated_count = (
+        mark_all_notifications_as_read(
+            db,
+            current_user.id,
+        )
     )
+
+    return {
+        "message": (
+            "All notifications marked as read"
+        ),
+        "updated_count": updated_count,
+    }
 
 
 @router.put(
     "/mark-all-unread",
 )
-def mark_all_as_unread(
+def mark_all_unread(
     db: Session = Depends(get_db),
     current_user: User = Depends(
         get_current_user
     ),
 ):
-    return (
+    updated_count = (
         mark_all_notifications_as_unread(
             db,
             current_user.id,
         )
     )
+
+    return {
+        "message": (
+            "All notifications marked as unread"
+        ),
+        "updated_count": updated_count,
+    }
 
 
 @router.post(
@@ -226,19 +285,18 @@ def mark_all_as_unread(
         NotificationPriorityPreviewResponse
     ),
 )
-def priority_preview(
-    payload:
-        NotificationPriorityPreviewRequest,
+def preview_priority(
+    data: NotificationPriorityPreviewRequest,
     current_user: User = Depends(
         get_current_user
     ),
 ):
     result = prioritize_notification(
-        title=payload.title,
-        message=payload.message,
-        notification_type=payload.type,
-        category=payload.category,
-        source=payload.source,
+        title=data.title,
+        message=data.message,
+        notification_type=data.type,
+        category=data.category,
+        source=data.source,
     )
 
     return {
@@ -251,52 +309,54 @@ def priority_preview(
 @router.post(
     "/",
     response_model=NotificationResponse,
-    status_code=201,
+    status_code=status.HTTP_201_CREATED,
 )
-def create_new_notification(
-    notification: NotificationCreate,
+async def create_new_notification(
+    data: NotificationCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(
         get_current_user
     ),
 ):
-    requested_user_id = (
-        notification.user_id
+    target_user_id = (
+        data.user_id
+        if data.user_id is not None
+        else current_user.id
     )
 
-    if requested_user_id is None:
-        target_user_id = current_user.id
-
-    elif (
-        requested_user_id
-        == current_user.id
+    if (
+        target_user_id != current_user.id
+        and not is_privileged(
+            current_user
+        )
     ):
-        target_user_id = current_user.id
-
-    elif is_privileged(current_user):
-        target_user_id = requested_user_id
-
-    else:
         raise HTTPException(
             status_code=403,
             detail=(
-                "You cannot create "
-                "notifications for another user"
+                "You cannot create a "
+                "notification for another user"
             ),
         )
 
     try:
-        return create_notification(
-            db=db,
-            notification=notification,
-            target_user_id=target_user_id,
+        notification = create_notification(
+            db,
+            data,
+            target_user_id,
         )
 
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
             detail=str(exc),
-        )
+        ) from exc
+
+    await deliver_notification_in_app(
+        db,
+        notification,
+    )
+
+    return notification
 
 
 @router.get(
@@ -310,170 +370,136 @@ def read_notification(
         get_current_user
     ),
 ):
-    try:
-        notification = (
-            get_notification_by_id(
-                db,
-                notification_id,
-            )
-        )
-
-        require_owner(
-            notification,
-            current_user,
-        )
-
-        return notification
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=404,
-            detail=str(exc),
-        )
+    return require_owner(
+        db,
+        notification_id,
+        current_user,
+    )
 
 
 @router.put(
     "/{notification_id}",
     response_model=NotificationResponse,
 )
-def update_existing_notification(
+def edit_notification(
     notification_id: int,
-    notification: NotificationUpdate,
+    data: NotificationUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(
         get_current_user
     ),
 ):
+    notification = require_owner(
+        db,
+        notification_id,
+        current_user,
+    )
+
     try:
-        existing = (
-            get_notification_by_id(
-                db,
-                notification_id,
-            )
-        )
-
-        require_owner(
-            existing,
-            current_user,
-        )
-
         return update_notification(
             db,
-            notification_id,
             notification,
+            data,
         )
 
     except ValueError as exc:
         raise HTTPException(
-            status_code=404,
+            status_code=400,
             detail=str(exc),
-        )
+        ) from exc
 
 
 @router.put(
     "/{notification_id}/read",
     response_model=NotificationResponse,
 )
-def read_notification_update(
+def mark_read(
     notification_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(
         get_current_user
     ),
 ):
-    try:
-        notification = (
-            get_notification_by_id(
-                db,
-                notification_id,
-            )
-        )
+    notification = require_owner(
+        db,
+        notification_id,
+        current_user,
+    )
 
-        require_owner(
-            notification,
-            current_user,
-        )
-
-        return mark_notification_as_read(
-            db,
-            notification_id,
-        )
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=404,
-            detail=str(exc),
-        )
+    return mark_notification_as_read(
+        db,
+        notification,
+    )
 
 
 @router.put(
     "/{notification_id}/unread",
     response_model=NotificationResponse,
 )
-def unread_notification_update(
+def mark_unread(
     notification_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(
         get_current_user
     ),
 ):
-    try:
-        notification = (
-            get_notification_by_id(
-                db,
-                notification_id,
-            )
-        )
+    notification = require_owner(
+        db,
+        notification_id,
+        current_user,
+    )
 
-        require_owner(
-            notification,
-            current_user,
-        )
+    return mark_notification_as_unread(
+        db,
+        notification,
+    )
 
-        return (
-            mark_notification_as_unread(
-                db,
-                notification_id,
-            )
-        )
 
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=404,
-            detail=str(exc),
-        )
+@router.post(
+    "/{notification_id}/deliver/",
+)
+async def redeliver_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_user
+    ),
+):
+    notification = require_owner(
+        db,
+        notification_id,
+        current_user,
+    )
+
+    return await deliver_notification_in_app(
+        db,
+        notification,
+    )
 
 
 @router.delete(
     "/{notification_id}",
 )
-def delete_existing_notification(
+def remove_notification(
     notification_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(
         get_current_user
     ),
 ):
-    try:
-        notification = (
-            get_notification_by_id(
-                db,
-                notification_id,
-            )
-        )
+    notification = require_owner(
+        db,
+        notification_id,
+        current_user,
+    )
 
-        require_owner(
-            notification,
-            current_user,
-        )
+    delete_notification(
+        db,
+        notification,
+    )
 
-        return delete_notification(
-            db,
-            notification_id,
+    return {
+        "message": (
+            "Notification deleted successfully"
         )
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=404,
-            detail=str(exc),
-        )
+    }

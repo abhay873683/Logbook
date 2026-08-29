@@ -9,11 +9,17 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
+from app.core.websocket.notification_manager import (
+    notification_manager,
+)
+
 from app.models.user import User
 
 from app.schemas.notification_preference import (
-    NotificationPreferenceUpdate,
+    NotificationConnectionResponse,
+    NotificationPreferenceEffectiveResponse,
     NotificationPreferenceResponse,
+    NotificationPreferenceUpdate,
 )
 
 from app.schemas.event_log import (
@@ -22,7 +28,9 @@ from app.schemas.event_log import (
 )
 
 from app.services.notification_preference_service import (
+    get_effective_preferences,
     get_notification_preferences,
+    reset_notification_preferences,
     update_notification_preferences,
 )
 
@@ -45,7 +53,9 @@ router = APIRouter()
 )
 def read_preferences(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
     return get_notification_preferences(
         db,
@@ -60,13 +70,71 @@ def read_preferences(
 def edit_preferences(
     data: NotificationPreferenceUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
     return update_notification_preferences(
         db,
         current_user.id,
         data,
     )
+
+
+@router.post(
+    "/notification/preferences/reset/",
+    response_model=NotificationPreferenceResponse,
+)
+def reset_preferences(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_user
+    ),
+):
+    return reset_notification_preferences(
+        db,
+        current_user.id,
+    )
+
+
+@router.get(
+    "/notification/preferences/effective/",
+    response_model=(
+        NotificationPreferenceEffectiveResponse
+    ),
+)
+def effective_preferences(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_user
+    ),
+):
+    return get_effective_preferences(
+        db,
+        current_user.id,
+    )
+
+
+@router.get(
+    "/notification/connections/",
+    response_model=NotificationConnectionResponse,
+)
+def notification_connections(
+    current_user: User = Depends(
+        get_current_user
+    ),
+):
+    count = (
+        notification_manager.connection_count(
+            current_user.id
+        )
+    )
+
+    return {
+        "user_id": current_user.id,
+        "active_connections": count,
+        "connected": count > 0,
+    }
 
 
 # =========================================================
@@ -81,7 +149,9 @@ def edit_preferences(
 def log_event(
     data: EventLogCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
     return create_event_log(
         db,
@@ -101,7 +171,9 @@ def read_event_logs(
         le=100,
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
     return get_event_logs(
         db,
