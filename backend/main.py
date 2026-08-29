@@ -533,3 +533,22 @@ def root():
     return {
         "message": "Welcome to TreeFlow AI API"
     }
+
+# ============================================================
+# Day 46 - Leave & Attendance
+# ============================================================
+
+from app.api.v1.routes import leaves as leave_routes
+from app.api.v1.routes import attendance as attendance_routes
+
+app.include_router(
+    leave_routes.router,
+    prefix="/api/v1/leaves",
+    tags=["Leave Management"],
+)
+
+app.include_router(
+    attendance_routes.router,
+    prefix="/api/v1/attendance",
+    tags=["Attendance"],
+)

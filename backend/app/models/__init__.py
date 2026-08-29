@@ -46,3 +46,6 @@ from .event_recurrence import EventRecurrence
 # Day 44 - Notifications & Reminders
 from .reminder import Reminder
 from .timesheet_log import TimesheetLog
+
+from .leave import Leave
+from .attendance import Attendance
