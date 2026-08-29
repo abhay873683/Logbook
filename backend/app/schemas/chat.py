@@ -72,6 +72,7 @@ class ChannelResponse(BaseModel):
 class GroupCreate(BaseModel):
     name: str
     description: Optional[str] = None
+
     user_ids: list[int] = Field(
         default_factory=list
     )
@@ -172,3 +173,21 @@ class MessageResponse(BaseModel):
     model_config = ConfigDict(
         from_attributes=True
     )
+
+
+class UnreadMessageCountResponse(BaseModel):
+    chat_type: str
+    chat_id: int
+    unread_count: int
+
+
+class MarkAllMessagesReadResponse(BaseModel):
+    chat_type: str
+    chat_id: int
+    marked_read: int
+
+
+class MessageStatsResponse(BaseModel):
+    total_messages: int
+    sent_messages: int
+    unread_messages: int

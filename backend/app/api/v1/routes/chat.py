@@ -21,6 +21,9 @@ from app.schemas.chat import (
     DirectConversationResponse,
     MessageCreate,
     MessageResponse,
+    UnreadMessageCountResponse,
+    MarkAllMessagesReadResponse,
+    MessageStatsResponse,
 )
 
 from app.services.chat_service import (
@@ -38,6 +41,9 @@ from app.services.chat_service import (
     send_message,
     get_messages,
     mark_message_read,
+    get_unread_message_count,
+    mark_all_messages_read,
+    get_message_stats,
     delete_message,
 )
 
@@ -300,6 +306,86 @@ def read_direct_conversations(
 
 
 # =========================================================
+# MESSAGE STATS
+# =========================================================
+
+@router.get(
+    "/messages/stats/",
+    response_model=MessageStatsResponse,
+)
+def read_message_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_message_stats(
+        db,
+        current_user.id,
+    )
+
+
+@router.get(
+    "/messages/{chat_id}/unread-count",
+    response_model=UnreadMessageCountResponse,
+)
+def read_unread_count(
+    chat_id: int,
+    chat_type: str = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return get_unread_message_count(
+            db,
+            chat_type,
+            chat_id,
+            current_user.id,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=403,
+            detail=str(exc),
+        )
+
+
+@router.put(
+    "/messages/{chat_id}/mark-all-read",
+    response_model=MarkAllMessagesReadResponse,
+)
+def read_all_messages_update(
+    chat_id: int,
+    chat_type: str = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return mark_all_messages_read(
+            db,
+            chat_type,
+            chat_id,
+            current_user.id,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=403,
+            detail=str(exc),
+        )
+
+
+# =========================================================
 # MESSAGES
 # =========================================================
 
@@ -340,6 +426,15 @@ def create_message(
 def read_messages(
     chat_id: int,
     chat_type: str = Query(...),
+    skip: int = Query(
+        0,
+        ge=0,
+    ),
+    limit: int = Query(
+        100,
+        ge=1,
+        le=500,
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -349,6 +444,8 @@ def read_messages(
             chat_type,
             chat_id,
             current_user.id,
+            skip,
+            limit,
         )
 
     except ValueError as exc:

@@ -189,7 +189,6 @@ def join_channel(
             "User already joined this channel"
         )
 
-    # Minimal private-channel protection.
     if channel.channel_type == "private":
         raise PermissionError(
             "Private channel requires invitation"
@@ -247,7 +246,6 @@ def create_group(
     current_user_id: int,
 ):
     member_ids = set(data.user_ids)
-
     member_ids.add(current_user_id)
 
     if len(member_ids) < 2:
@@ -473,6 +471,11 @@ def validate_chat_access(
                 "User is not part of this conversation"
             )
 
+    else:
+        raise ValueError(
+            "Invalid chat type"
+        )
+
 
 # =========================================================
 # MESSAGES
@@ -511,6 +514,8 @@ def get_messages(
     chat_type: str,
     chat_id: int,
     user_id: int,
+    skip: int = 0,
+    limit: int = 100,
 ):
     validate_chat_access(
         db,
@@ -531,6 +536,8 @@ def get_messages(
         .order_by(
             Message.created_at.asc()
         )
+        .offset(skip)
+        .limit(limit)
         .all()
     )
 
@@ -571,6 +578,127 @@ def mark_message_read(
     db.refresh(message)
 
     return message
+
+
+def get_unread_message_count(
+    db: Session,
+    chat_type: str,
+    chat_id: int,
+    user_id: int,
+):
+    validate_chat_access(
+        db,
+        chat_type,
+        chat_id,
+        user_id,
+    )
+
+    unread_count = (
+        db.query(Message)
+        .filter(
+            Message.chat_type == chat_type,
+            Message.chat_id == chat_id,
+            Message.sender_id != user_id,
+            Message.is_read.is_(False),
+        )
+        .count()
+    )
+
+    return {
+        "chat_type": chat_type,
+        "chat_id": chat_id,
+        "unread_count": unread_count,
+    }
+
+
+def mark_all_messages_read(
+    db: Session,
+    chat_type: str,
+    chat_id: int,
+    user_id: int,
+):
+    validate_chat_access(
+        db,
+        chat_type,
+        chat_id,
+        user_id,
+    )
+
+    marked_read = (
+        db.query(Message)
+        .filter(
+            Message.chat_type == chat_type,
+            Message.chat_id == chat_id,
+            Message.sender_id != user_id,
+            Message.is_read.is_(False),
+        )
+        .update(
+            {
+                Message.is_read: True
+            },
+            synchronize_session=False,
+        )
+    )
+
+    db.commit()
+
+    return {
+        "chat_type": chat_type,
+        "chat_id": chat_id,
+        "marked_read": marked_read,
+    }
+
+
+def get_message_stats(
+    db: Session,
+    user_id: int,
+):
+    total_messages = (
+        db.query(Message)
+        .count()
+    )
+
+    sent_messages = (
+        db.query(Message)
+        .filter(
+            Message.sender_id == user_id
+        )
+        .count()
+    )
+
+    unread_messages = 0
+
+    messages = (
+        db.query(Message)
+        .filter(
+            Message.sender_id != user_id,
+            Message.is_read.is_(False),
+        )
+        .all()
+    )
+
+    for message in messages:
+        try:
+            validate_chat_access(
+                db,
+                message.chat_type,
+                message.chat_id,
+                user_id,
+            )
+
+            unread_messages += 1
+
+        except (
+            ValueError,
+            PermissionError,
+        ):
+            continue
+
+    return {
+        "total_messages": total_messages,
+        "sent_messages": sent_messages,
+        "unread_messages": unread_messages,
+    }
 
 
 def delete_message(
