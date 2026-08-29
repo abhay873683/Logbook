@@ -1,4 +1,4 @@
-﻿from datetime import date
+from datetime import date
 
 from fastapi import (
     APIRouter,
@@ -56,6 +56,29 @@ from app.services.time_tracking_service import (
 
 
 router = APIRouter()
+
+
+TIMESHEET_REVIEWER_ROLES = {
+    "manager",
+    "admin",
+    "superadmin",
+    "super_admin",
+}
+
+
+def require_timesheet_reviewer(user):
+    role = str(
+        getattr(user, "role", "") or ""
+    ).strip().lower()
+
+    if role not in TIMESHEET_REVIEWER_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Manager or admin permission required",
+        )
+
+
+
 
 
 # ============================================================
@@ -390,6 +413,8 @@ def approve_user_timesheet(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    require_timesheet_reviewer(current_user)
+
     return approve_timesheet(
         db,
         timesheet_id,
@@ -407,6 +432,8 @@ def reject_user_timesheet(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    require_timesheet_reviewer(current_user)
+
     return reject_timesheet(
         db,
         timesheet_id,

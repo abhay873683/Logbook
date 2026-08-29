@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # TreeFlow AI - Main Application
 # ============================================================
 
@@ -76,6 +76,7 @@ from app.api.v1.routes import notification_ws
 
 # Day 41 - Time Tracking
 from app.api.v1.routes import time_tracking
+from app.api.v1.routes import timesheets
 
 # Day 42 - Dashboard & Widgets
 from app.api.v1.routes import dashboards
@@ -503,6 +504,12 @@ app.include_router(
     time_tracking.router,
     prefix="/api/v1/time-tracking",
     tags=["Time Tracking"],
+)
+
+app.include_router(
+    timesheets.router,
+    prefix="/api/v1/timesheets",
+    tags=["Timesheets & Approval"],
 )
 
 
