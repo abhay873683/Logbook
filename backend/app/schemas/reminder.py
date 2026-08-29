@@ -4,6 +4,7 @@ from typing import Optional
 from pydantic import (
     BaseModel,
     ConfigDict,
+    Field,
     field_validator,
     model_validator,
 )
@@ -14,6 +15,20 @@ ALLOWED_RECURRENCE = {
     "weekly",
     "monthly",
 }
+
+
+def validate_timezone_aware_datetime(
+    value: datetime | None,
+):
+    if value is None:
+        return value
+
+    if value.tzinfo is None:
+        raise ValueError(
+            "Reminder datetime must include timezone information"
+        )
+
+    return value
 
 
 class ReminderCreate(BaseModel):
@@ -29,9 +44,16 @@ class ReminderCreate(BaseModel):
         value = value.strip()
 
         if not value:
-            raise ValueError("Reminder title cannot be empty")
+            raise ValueError(
+                "Reminder title cannot be empty"
+            )
 
         return value
+
+    @field_validator("remind_at")
+    @classmethod
+    def validate_remind_at(cls, value: datetime):
+        return validate_timezone_aware_datetime(value)
 
     @field_validator("recurrence")
     @classmethod
@@ -78,9 +100,16 @@ class ReminderUpdate(BaseModel):
         value = value.strip()
 
         if not value:
-            raise ValueError("Reminder title cannot be empty")
+            raise ValueError(
+                "Reminder title cannot be empty"
+            )
 
         return value
+
+    @field_validator("remind_at")
+    @classmethod
+    def validate_remind_at(cls, value):
+        return validate_timezone_aware_datetime(value)
 
     @field_validator("recurrence")
     @classmethod
@@ -113,3 +142,28 @@ class ReminderResponse(BaseModel):
     model_config = ConfigDict(
         from_attributes=True
     )
+
+
+class ReminderSnoozeRequest(BaseModel):
+    minutes: int = Field(
+        default=10,
+        ge=1,
+        le=10080,
+    )
+
+
+class ReminderProcessResult(BaseModel):
+    processed: int
+    notifications_created: int
+    delivered: int
+    recurring_rescheduled: int
+    completed: int
+    failed: int
+
+
+class ReminderStatsResponse(BaseModel):
+    total: int
+    scheduled: int
+    due: int
+    recurring: int
+    completed: int
