@@ -26,8 +26,8 @@ from app.schemas.notification import (
     NotificationUpdate,
 )
 
-from app.services.notification_delivery_service import (
-    deliver_notification_in_app,
+from app.services.notification_channel_service import (
+    deliver_notification_all_channels,
 )
 
 from app.services.notification_priority_service import (
@@ -351,7 +351,7 @@ async def create_new_notification(
             detail=str(exc),
         ) from exc
 
-    await deliver_notification_in_app(
+    await deliver_notification_all_channels(
         db,
         notification,
     )
@@ -471,7 +471,7 @@ async def redeliver_notification(
         current_user,
     )
 
-    return await deliver_notification_in_app(
+    return await deliver_notification_all_channels(
         db,
         notification,
     )

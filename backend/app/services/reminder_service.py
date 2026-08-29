@@ -16,8 +16,8 @@ from app.schemas.reminder import (
     ReminderUpdate,
 )
 
-from app.services.notification_delivery_service import (
-    deliver_notification_in_app,
+from app.services.notification_channel_service import (
+    deliver_notification_all_channels,
 )
 
 
@@ -402,14 +402,18 @@ async def process_due_reminders(
             ] += 1
 
             delivery = (
-                await deliver_notification_in_app(
+                await deliver_notification_all_channels(
                     db,
                     notification,
                 )
             )
 
-            if delivery.get(
-                "delivered"
+            if (
+                delivery.get(
+                    "delivered_channels",
+                    0,
+                )
+                > 0
             ):
                 result["delivered"] += 1
 
