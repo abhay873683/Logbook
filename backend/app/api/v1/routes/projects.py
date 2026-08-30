@@ -1,4 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+)
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -21,13 +26,30 @@ from app.services.project_service import (
     delete_project,
 )
 
+from app.services.activity_log_service import (
+    log_activity,
+)
+
 
 router = APIRouter()
 
 
-# ----------------------------------------
-# Create Project
-# ----------------------------------------
+def get_client_ip(
+    request: Request,
+) -> str | None:
+    forwarded = request.headers.get(
+        "x-forwarded-for"
+    )
+
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+
+    if request.client:
+        return request.client.host
+
+    return None
+
+
 @router.post(
     "/",
     response_model=ProjectResponse,
@@ -35,15 +57,30 @@ router = APIRouter()
 )
 def create_new_project(
     project: ProjectCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return create_project(
+        created = create_project(
             db,
             project,
             current_user,
         )
+
+        log_activity(
+            db=db,
+            user_id=current_user.id,
+            action="project_created",
+            entity_type="project",
+            entity_id=created.id,
+            description=(
+                f"Project '{created.name}' created"
+            ),
+            ip_address=get_client_ip(request),
+        )
+
+        return created
 
     except ValueError as e:
         raise HTTPException(
@@ -52,9 +89,6 @@ def create_new_project(
         )
 
 
-# ----------------------------------------
-# Get All Projects
-# ----------------------------------------
 @router.get(
     "/",
     response_model=List[ProjectResponse],
@@ -66,9 +100,6 @@ def get_projects(
     return get_all_projects(db)
 
 
-# ----------------------------------------
-# Get Project By ID
-# ----------------------------------------
 @router.get(
     "/{project_id}",
     response_model=ProjectResponse,
@@ -91,9 +122,6 @@ def get_project(
         )
 
 
-# ----------------------------------------
-# Update Project
-# ----------------------------------------
 @router.put(
     "/{project_id}",
     response_model=ProjectResponse,
@@ -101,15 +129,30 @@ def get_project(
 def update_existing_project(
     project_id: int,
     project: ProjectUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return update_project(
+        updated = update_project(
             db,
             project_id,
             project,
         )
+
+        log_activity(
+            db=db,
+            user_id=current_user.id,
+            action="project_updated",
+            entity_type="project",
+            entity_id=updated.id,
+            description=(
+                f"Project '{updated.name}' updated"
+            ),
+            ip_address=get_client_ip(request),
+        )
+
+        return updated
 
     except ValueError as e:
         error_message = str(e)
@@ -125,20 +168,39 @@ def update_existing_project(
         )
 
 
-# ----------------------------------------
-# Delete Project
-# ----------------------------------------
 @router.delete("/{project_id}")
 def delete_existing_project(
     project_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return delete_project(
+        existing = get_project_by_id(
             db,
             project_id,
         )
+
+        project_name = existing.name
+
+        result = delete_project(
+            db,
+            project_id,
+        )
+
+        log_activity(
+            db=db,
+            user_id=current_user.id,
+            action="project_deleted",
+            entity_type="project",
+            entity_id=project_id,
+            description=(
+                f"Project '{project_name}' deleted"
+            ),
+            ip_address=get_client_ip(request),
+        )
+
+        return result
 
     except ValueError as e:
         error_message = str(e)

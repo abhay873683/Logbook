@@ -2,6 +2,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Request,
 )
 
 from sqlalchemy.orm import Session
@@ -26,13 +27,30 @@ from app.services.comment_service import (
     delete_comment,
 )
 
+from app.services.activity_log_service import (
+    log_activity,
+)
+
 
 router = APIRouter()
 
 
-# =========================================================
-# GET ALL COMMENTS
-# =========================================================
+def get_client_ip(
+    request: Request,
+) -> str | None:
+    forwarded = request.headers.get(
+        "x-forwarded-for"
+    )
+
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+
+    if request.client:
+        return request.client.host
+
+    return None
+
+
 @router.get(
     "/",
     response_model=list[CommentResponse],
@@ -44,10 +62,6 @@ def read_comments(
     return get_all_comments(db)
 
 
-# =========================================================
-# GET COMMENTS FOR TASK
-# IMPORTANT: Keep before /{comment_id}
-# =========================================================
 @router.get(
     "/task/{task_id}",
     response_model=list[CommentResponse],
@@ -70,9 +84,6 @@ def read_task_comments(
         )
 
 
-# =========================================================
-# GET COMMENT BY ID
-# =========================================================
 @router.get(
     "/{comment_id}",
     response_model=CommentResponse,
@@ -95,9 +106,6 @@ def read_comment(
         )
 
 
-# =========================================================
-# CREATE COMMENT
-# =========================================================
 @router.post(
     "/",
     response_model=CommentResponse,
@@ -105,15 +113,31 @@ def read_comment(
 )
 def create_new_comment(
     comment: CommentCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return create_comment(
+        created = create_comment(
             comment,
             current_user.id,
             db,
         )
+
+        log_activity(
+            db=db,
+            user_id=current_user.id,
+            action="comment_created",
+            entity_type="comment",
+            entity_id=created.id,
+            description=(
+                f"Comment created on task "
+                f"{created.task_id}"
+            ),
+            ip_address=get_client_ip(request),
+        )
+
+        return created
 
     except ValueError as e:
         error_message = str(e)
@@ -129,9 +153,6 @@ def create_new_comment(
         )
 
 
-# =========================================================
-# UPDATE COMMENT
-# =========================================================
 @router.put(
     "/{comment_id}",
     response_model=CommentResponse,
@@ -139,15 +160,30 @@ def create_new_comment(
 def update_existing_comment(
     comment_id: int,
     comment: CommentUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return update_comment(
+        updated = update_comment(
             comment_id,
             comment,
             db,
         )
+
+        log_activity(
+            db=db,
+            user_id=current_user.id,
+            action="comment_updated",
+            entity_type="comment",
+            entity_id=updated.id,
+            description=(
+                f"Comment {updated.id} updated"
+            ),
+            ip_address=get_client_ip(request),
+        )
+
+        return updated
 
     except ValueError as e:
         error_message = str(e)
@@ -166,20 +202,40 @@ def update_existing_comment(
         )
 
 
-# =========================================================
-# DELETE COMMENT
-# =========================================================
 @router.delete("/{comment_id}")
 def delete_existing_comment(
     comment_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return delete_comment(
+        existing = get_comment_by_id(
             comment_id,
             db,
         )
+
+        task_id = existing.task_id
+
+        result = delete_comment(
+            comment_id,
+            db,
+        )
+
+        log_activity(
+            db=db,
+            user_id=current_user.id,
+            action="comment_deleted",
+            entity_type="comment",
+            entity_id=comment_id,
+            description=(
+                f"Comment deleted from task "
+                f"{task_id}"
+            ),
+            ip_address=get_client_ip(request),
+        )
+
+        return result
 
     except ValueError as e:
         raise HTTPException(
