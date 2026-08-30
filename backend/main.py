@@ -61,6 +61,7 @@ from app.api.v1.routes import folders
 
 from app.api.v1.routes import notification
 from app.api.v1.routes import activity_log
+from app.api.v1.routes import activity_anomaly
 
 from app.api.v1.routes import dashboard
 from app.api.v1.routes import reports
@@ -416,6 +417,17 @@ app.include_router(
     activity_log.router,
     prefix="/api/v1/activity",
     tags=["Activity Logs"],
+)
+
+
+# ============================================================
+# Activity Anomaly Detection
+# ============================================================
+
+app.include_router(
+    activity_anomaly.router,
+    prefix="/api/v1/activity/anomalies",
+    tags=["Activity Anomaly Detection"],
 )
 
 
