@@ -570,3 +570,12 @@ app.include_router(
     prefix="/api/v1/chat/messages",
     tags=["Message Reactions"],
 )
+
+from app.api.v1.routes import chat_assistant
+
+
+app.include_router(
+    chat_assistant.router,
+    prefix="/api/v1/chat/assistant",
+    tags=["Smart Chat Assistant"],
+)
