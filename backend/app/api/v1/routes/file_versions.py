@@ -28,6 +28,8 @@ from app.services.file_version_service import (
     get_file_versions,
 )
 
+from app.services.file_service import get_file_by_id
+
 
 router = APIRouter()
 
@@ -50,6 +52,13 @@ def upload_new_file_version(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    get_file_by_id(
+        file_id=file_id,
+        db=db,
+        user_id=current_user.id,
+        role=current_user.role,
+    )
+
     extension = os.path.splitext(
         uploaded_file.filename or ""
     )[1]
@@ -97,6 +106,13 @@ def read_file_versions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    get_file_by_id(
+        file_id=file_id,
+        db=db,
+        user_id=current_user.id,
+        role=current_user.role,
+    )
+
     try:
         return get_file_versions(
             db,
@@ -120,6 +136,13 @@ def read_file_version(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    get_file_by_id(
+        file_id=file_id,
+        db=db,
+        user_id=current_user.id,
+        role=current_user.role,
+    )
+
     try:
         return get_file_version_by_id(
             db,
@@ -143,6 +166,13 @@ def remove_file_version(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    get_file_by_id(
+        file_id=file_id,
+        db=db,
+        user_id=current_user.id,
+        role=current_user.role,
+    )
+
     try:
         return delete_file_version(
             db,

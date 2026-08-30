@@ -29,12 +29,8 @@ def get_next_version_number(
     file_id: int,
 ):
     current_version = (
-        db.query(
-            func.max(FileVersion.version_number)
-        )
-        .filter(
-            FileVersion.file_id == file_id
-        )
+        db.query(func.max(FileVersion.version_number))
+        .filter(FileVersion.file_id == file_id)
         .scalar()
     )
 
@@ -48,10 +44,7 @@ def create_file_version(
     file_path: str,
     file_size: int,
 ):
-    get_file_or_error(
-        db,
-        file_id,
-    )
+    get_file_or_error(db, file_id)
 
     version_number = get_next_version_number(
         db,
@@ -66,30 +59,26 @@ def create_file_version(
         uploaded_by=uploaded_by,
     )
 
-    db.add(version)
-    db.commit()
-    db.refresh(version)
-
-    return version
+    try:
+        db.add(version)
+        db.commit()
+        db.refresh(version)
+        return version
+    except Exception:
+        db.rollback()
+        raise
 
 
 def get_file_versions(
     db: Session,
     file_id: int,
 ):
-    get_file_or_error(
-        db,
-        file_id,
-    )
+    get_file_or_error(db, file_id)
 
     return (
         db.query(FileVersion)
-        .filter(
-            FileVersion.file_id == file_id
-        )
-        .order_by(
-            FileVersion.version_number.desc()
-        )
+        .filter(FileVersion.file_id == file_id)
+        .order_by(FileVersion.version_number.desc())
         .all()
     )
 
@@ -99,6 +88,8 @@ def get_file_version_by_id(
     file_id: int,
     version_id: int,
 ):
+    get_file_or_error(db, file_id)
+
     version = (
         db.query(FileVersion)
         .filter(
@@ -109,9 +100,7 @@ def get_file_version_by_id(
     )
 
     if not version:
-        raise ValueError(
-            "File version not found"
-        )
+        raise ValueError("File version not found")
 
     return version
 
@@ -127,9 +116,10 @@ def delete_file_version(
         version_id,
     )
 
-    db.delete(version)
-    db.commit()
-
-    return {
-        "message": "File version deleted successfully"
-    }
+    try:
+        db.delete(version)
+        db.commit()
+        return {"message": "File version deleted successfully"}
+    except Exception:
+        db.rollback()
+        raise

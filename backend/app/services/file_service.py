@@ -1,14 +1,22 @@
-from sqlalchemy.orm import Session
-from fastapi import HTTPException
+from datetime import datetime, timezone
 import os
+
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 from app.models.file import File
 from app.schemas.file import FileCreate
 
 
-# ----------------------------------------
-# List Files (role-based, optional task_id filter)
-# ----------------------------------------
+def can_manage_file(file: File, user_id: int, role: str) -> bool:
+    normalized_role = (role or "").strip().lower()
+
+    if normalized_role in {"admin", "super_admin", "manager"}:
+        return True
+
+    return file.uploaded_by == user_id
+
+
 def list_files(
     db: Session,
     user_id: int,
@@ -17,62 +25,83 @@ def list_files(
 ):
     query = db.query(File).filter(File.is_active == True)
 
-    # Employee can only see their own uploaded files
-    if role == "employee":
+    normalized_role = (role or "").strip().lower()
+
+    if normalized_role in {"employee", "user"}:
         query = query.filter(File.uploaded_by == user_id)
 
-    if task_id:
+    if task_id is not None:
         query = query.filter(File.task_id == task_id)
 
     return query.order_by(File.created_at.desc()).all()
 
 
-# ----------------------------------------
-# Get Files Uploaded By a Specific User (for "My Files")
-# ----------------------------------------
 def get_my_files(db: Session, user_id: int):
-    return db.query(File).filter(
-        File.uploaded_by == user_id,
-        File.is_active == True,
-    ).all()
+    return (
+        db.query(File)
+        .filter(
+            File.uploaded_by == user_id,
+            File.is_active == True,
+        )
+        .order_by(File.created_at.desc())
+        .all()
+    )
 
 
-# ----------------------------------------
-# Get File By ID
-# ----------------------------------------
-def get_file_by_id(file_id: int, db: Session):
-    file = db.query(File).filter(
-        File.id == file_id,
-        File.is_active == True,
-    ).first()
-
-    if not file:
-        raise ValueError("File not found")
-
-    return file
-
-
-# ----------------------------------------
-# Download File (with permission + existence check)
-# ----------------------------------------
-def download_file(db: Session, file_id: int, user_id: int, role: str):
-    file = db.query(File).filter(
-        File.id == file_id,
-        File.is_active == True,
-        File.is_downloadable == True,
-    ).first()
+def get_file_by_id(
+    file_id: int,
+    db: Session,
+    user_id: int | None = None,
+    role: str | None = None,
+):
+    file = (
+        db.query(File)
+        .filter(
+            File.id == file_id,
+            File.is_active == True,
+        )
+        .first()
+    )
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Employee can only download their own files
-    if role == "employee" and file.uploaded_by != user_id:
+    if user_id is not None and role is not None:
+        if not can_manage_file(file, user_id, role):
+            raise HTTPException(
+                status_code=403,
+                detail="Not allowed to access this file",
+            )
+
+    return file
+
+
+def download_file(
+    db: Session,
+    file_id: int,
+    user_id: int,
+    role: str,
+):
+    file = (
+        db.query(File)
+        .filter(
+            File.id == file_id,
+            File.is_active == True,
+            File.is_downloadable == True,
+        )
+        .first()
+    )
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if not can_manage_file(file, user_id, role):
         raise HTTPException(
             status_code=403,
             detail="Not allowed to download this file",
         )
 
-    if not os.path.exists(file.file_path):
+    if not os.path.isfile(file.file_path):
         raise HTTPException(
             status_code=404,
             detail="File not found on server",
@@ -81,9 +110,6 @@ def download_file(db: Session, file_id: int, user_id: int, role: str):
     return file
 
 
-# ----------------------------------------
-# Create File
-# ----------------------------------------
 def create_file(
     db: Session,
     file_data: FileCreate,
@@ -104,28 +130,48 @@ def create_file(
         is_downloadable=True,
     )
 
-    db.add(new_file)
-    db.commit()
-    db.refresh(new_file)
+    try:
+        db.add(new_file)
+        db.commit()
+        db.refresh(new_file)
+        return new_file
+    except Exception:
+        db.rollback()
+        raise
 
-    return new_file
 
-
-# ----------------------------------------
-# Delete File (Soft Delete)
-# ----------------------------------------
-def delete_file(file_id: int, db: Session):
-    file = db.query(File).filter(
-        File.id == file_id,
-        File.is_active == True,
-    ).first()
+def delete_file(
+    file_id: int,
+    db: Session,
+    user_id: int | None = None,
+    role: str | None = None,
+):
+    file = (
+        db.query(File)
+        .filter(
+            File.id == file_id,
+            File.is_active == True,
+        )
+        .first()
+    )
 
     if not file:
-        raise ValueError("File not found")
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if user_id is not None and role is not None:
+        if not can_manage_file(file, user_id, role):
+            raise HTTPException(
+                status_code=403,
+                detail="Not allowed to delete this file",
+            )
 
     file.is_active = False
-    db.commit()
+    file.deleted_at = datetime.now(timezone.utc)
+    file.deleted_by = user_id
 
-    return {
-        "message": "File deleted successfully"
-    }
+    try:
+        db.commit()
+        return {"message": "File deleted successfully"}
+    except Exception:
+        db.rollback()
+        raise

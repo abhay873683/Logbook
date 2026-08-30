@@ -38,6 +38,26 @@ router = APIRouter()
 
 UPLOAD_DIR = "uploads"
 
+MAX_FILE_SIZE = 25 * 1024 * 1024
+
+ALLOWED_EXTENSIONS = {
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".txt",
+    ".csv",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+    ".zip",
+}
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
@@ -124,7 +144,12 @@ def read_file(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return get_file_by_id(file_id, db)
+        return get_file_by_id(
+            file_id=file_id,
+            db=db,
+            user_id=current_user.id,
+            role=current_user.role,
+        )
 
     except ValueError as e:
         raise HTTPException(
@@ -147,28 +172,64 @@ def upload_file(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    file_extension = os.path.splitext(uploaded_file.filename)[1]
+    original_name = os.path.basename(uploaded_file.filename or "").strip()
+
+    if not original_name:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file name",
+        )
+
+    file_extension = os.path.splitext(original_name)[1].lower()
+
+    if file_extension not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=415,
+            detail="File type is not allowed",
+        )
+
+    uploaded_file.file.seek(0, os.SEEK_END)
+    file_size = uploaded_file.file.tell()
+    uploaded_file.file.seek(0)
+
+    if file_size <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Empty files are not allowed",
+        )
+
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail="File exceeds the 25 MB size limit",
+        )
+
     unique_name = f"{uuid.uuid4().hex}{file_extension}"
     file_path = os.path.join(UPLOAD_DIR, unique_name)
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(
-            uploaded_file.file,
-            buffer,
-        )
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(
+                uploaded_file.file,
+                buffer,
+            )
 
-    file_data = FileCreate(
-        task_id=task_id,
-    )
+        file_data = FileCreate(
+            task_id=task_id,
+        )
+    except Exception:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise
 
     result = create_file(
         db=db,
         file_data=file_data,
         uploaded_by=current_user.id,
-        file_name=uploaded_file.filename,
+        file_name=original_name,
         file_path=file_path,
         file_type=uploaded_file.content_type,
-        file_size=os.path.getsize(file_path),
+        file_size=file_size,
     )
 
     log_activity(
@@ -194,8 +255,10 @@ def remove_file(
 ):
     try:
         return delete_file(
-            file_id,
-            db,
+            file_id=file_id,
+            db=db,
+            user_id=current_user.id,
+            role=current_user.role,
         )
 
     except ValueError as e:

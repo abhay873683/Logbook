@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -28,12 +28,9 @@ def share_file_api(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    try:
-        return share_file(
-            db=db,
-            data=payload,
-            user_id=current_user.id,
-            role=current_user.role,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return share_file(
+        db=db,
+        data=payload,
+        user_id=current_user.id,
+        role=current_user.role,
+    )

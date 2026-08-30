@@ -1,18 +1,25 @@
-from sqlalchemy.orm import Session
+from datetime import datetime, timezone
+
 from fastapi import HTTPException
-from datetime import datetime
+from sqlalchemy.orm import Session
 
 from app.models.file import File
 
 
-# ----------------------------------------
-# Move File to Trash (soft delete)
-# ----------------------------------------
-def move_to_trash(db: Session, file_id: int, user_id: int, role: str):
-    file = db.query(File).filter(
-        File.id == file_id,
-        File.is_active == True,
-    ).first()
+def move_to_trash(
+    db: Session,
+    file_id: int,
+    user_id: int,
+    role: str,
+):
+    file = (
+        db.query(File)
+        .filter(
+            File.id == file_id,
+            File.is_active == True,
+        )
+        .first()
+    )
 
     if not file:
         raise HTTPException(
@@ -20,34 +27,37 @@ def move_to_trash(db: Session, file_id: int, user_id: int, role: str):
             detail="File not found",
         )
 
-    if role == "employee":
+    normalized_role = (role or "").strip().lower()
+    allowed_roles = {"admin", "super_admin", "manager"}
+
+    if normalized_role not in allowed_roles and file.uploaded_by != user_id:
         raise HTTPException(
             status_code=403,
-            detail="Not allowed to move files to trash",
+            detail="Not allowed to move this file to trash",
         )
 
     file.is_active = False
-    file.deleted_at = datetime.utcnow()
+    file.deleted_at = datetime.now(timezone.utc)
     file.deleted_by = user_id
 
-    db.commit()
+    try:
+        db.commit()
+        return {"message": "File moved to trash successfully"}
+    except Exception:
+        db.rollback()
+        raise
 
-    return {
-        "message": "File moved to trash successfully"
-    }
 
-
-# ----------------------------------------
-# List Trash Files (role based)
-# ----------------------------------------
-def get_trash_files(db: Session, user_id: int, role: str):
+def get_trash_files(
+    db: Session,
+    user_id: int,
+    role: str,
+):
     query = db.query(File).filter(File.is_active == False)
 
-    # Employee has no access to trash at all
-    if role == "employee":
-        raise HTTPException(
-            status_code=403,
-            detail="Not allowed to access trash",
-        )
+    normalized_role = (role or "").strip().lower()
+
+    if normalized_role not in {"admin", "super_admin", "manager"}:
+        query = query.filter(File.uploaded_by == user_id)
 
     return query.order_by(File.deleted_at.desc()).all()
