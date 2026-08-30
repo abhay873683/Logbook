@@ -552,3 +552,21 @@ app.include_router(
     prefix="/api/v1/attendance",
     tags=["Attendance"],
 )
+
+from app.api.v1.routes import chat_search
+
+from app.api.v1.routes import message_reaction
+
+
+app.include_router(
+    chat_search.router,
+    prefix="/api/v1/chat/search",
+    tags=["Chat Search"],
+)
+
+
+app.include_router(
+    message_reaction.router,
+    prefix="/api/v1/chat/messages",
+    tags=["Message Reactions"],
+)

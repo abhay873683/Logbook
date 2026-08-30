@@ -83,3 +83,4 @@ from .ai import (
     AIMessage,
     AISuggestion,
 )
+from .message_reaction import MessageReaction
