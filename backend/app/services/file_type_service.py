@@ -205,3 +205,84 @@ def classify_file(
             "extension rule matched"
         ),
     }
+
+
+FOLDER_NAMES = {
+    "finance": "Finance",
+    "legal": "Legal",
+    "hr": "HR",
+    "meeting": "Meetings",
+    "report": "Reports",
+    "design": "Design",
+    "document": "Documents",
+    "spreadsheet": "Spreadsheets",
+    "presentation": "Presentations",
+    "image": "Images",
+    "video": "Videos",
+    "audio": "Audio",
+    "archive": "Archives",
+    "code": "Code",
+    "other": "Other",
+}
+
+
+def suggest_file_organization(
+    db: Session,
+    file_record,
+    user_id: int,
+):
+    from app.models.folder import Folder
+
+    classification = classify_file(
+        file_name=file_record.file_name,
+        mime_type=file_record.file_type,
+    )
+
+    category = classification["category"]
+
+    folder_name = FOLDER_NAMES.get(
+        category,
+        category.replace("_", " ").title(),
+    )
+
+    existing_folder = (
+        db.query(Folder)
+        .filter(
+            Folder.owner_id == user_id,
+            Folder.parent_id.is_(None),
+            Folder.name.ilike(folder_name),
+        )
+        .first()
+    )
+
+    if existing_folder:
+        reason = (
+            f"{classification['reason']}. "
+            f"Matching folder '{existing_folder.name}' "
+            "already exists."
+        )
+    else:
+        reason = (
+            f"{classification['reason']}. "
+            f"Suggested folder '{folder_name}' "
+            "does not exist yet."
+        )
+
+    return {
+        "file_id": file_record.id,
+        "file_name": file_record.file_name,
+        "category": category,
+        "confidence": classification["confidence"],
+        "recommended_folder_id": (
+            existing_folder.id
+            if existing_folder
+            else None
+        ),
+        "recommended_folder_name": (
+            existing_folder.name
+            if existing_folder
+            else folder_name
+        ),
+        "folder_exists": existing_folder is not None,
+        "reason": reason,
+    }

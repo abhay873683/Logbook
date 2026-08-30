@@ -14,11 +14,13 @@ from app.services.file_service import get_file_by_id
 from app.schemas.file_type import (
     FileClassificationRequest,
     FileClassificationResponse,
+    FileOrganizationSuggestionResponse,
     FileTypeResponse,
 )
 from app.services.file_type_service import (
     classify_file,
     get_all_file_types,
+    suggest_file_organization,
 )
 
 
@@ -76,4 +78,27 @@ def classify_existing_file_api(
     return classify_file(
         file_name=file_record.file_name,
         mime_type=file_record.file_type,
+    )
+
+
+@router.get(
+    "/organize/{file_id}",
+    response_model=FileOrganizationSuggestionResponse,
+)
+def suggest_file_organization_api(
+    file_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    file_record = get_file_by_id(
+        file_id=file_id,
+        db=db,
+        user_id=current_user.id,
+        role=current_user.role,
+    )
+
+    return suggest_file_organization(
+        db=db,
+        file_record=file_record,
+        user_id=current_user.id,
     )

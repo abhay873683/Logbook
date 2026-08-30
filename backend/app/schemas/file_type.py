@@ -35,3 +35,14 @@ class FileClassificationResponse(BaseModel):
     category: str
     confidence: float
     reason: str
+
+
+class FileOrganizationSuggestionResponse(BaseModel):
+    file_id: int
+    file_name: str
+    category: str
+    confidence: float
+    recommended_folder_id: Optional[int] = None
+    recommended_folder_name: str
+    folder_exists: bool
+    reason: str
