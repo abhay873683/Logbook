@@ -2,30 +2,56 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Query,
+    Request,
 )
 
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import (
+    get_current_user,
+)
 
 from app.models.user import User
 
 from app.schemas.activity_log import (
     ActivityLogCreate,
     ActivityLogResponse,
+    ActivityStatsResponse,
 )
 
 from app.services.activity_log_service import (
     create_activity_log,
-    get_activity_log_by_id,
+    get_activity_log_for_user,
     get_activity_logs,
+    get_activity_stats,
     get_all_activity_logs,
-    delete_activity_log,
+    is_admin,
 )
 
 
 router = APIRouter()
+
+
+def get_client_ip(
+    request: Request,
+) -> str | None:
+    forwarded = request.headers.get(
+        "x-forwarded-for"
+    )
+
+    if forwarded:
+        return (
+            forwarded
+            .split(",")[0]
+            .strip()
+        )
+
+    if request.client:
+        return request.client.host
+
+    return None
 
 
 @router.post(
@@ -35,53 +61,155 @@ router = APIRouter()
 )
 def create_new_activity_log(
     activity: ActivityLogCreate,
+    request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
     try:
-        if activity.user_id is None:
-            activity.user_id = current_user.id
+        secure_activity = (
+            activity.model_copy(
+                update={
+                    "user_id": (
+                        current_user.id
+                    ),
+                    "ip_address": (
+                        get_client_ip(
+                            request
+                        )
+                    ),
+                }
+            )
+        )
 
         return create_activity_log(
             db,
-            activity,
+            secure_activity,
         )
 
-    except ValueError as e:
+    except ValueError as exc:
         raise HTTPException(
             status_code=400,
-            detail=str(e),
+            detail=str(exc),
         )
 
 
 @router.get(
     "/my",
-    response_model=list[ActivityLogResponse],
+    response_model=list[
+        ActivityLogResponse
+    ],
 )
 def read_my_activity_logs(
-    limit: int = 20,
+    skip: int = Query(
+        0,
+        ge=0,
+    ),
+    limit: int = Query(
+        20,
+        ge=1,
+        le=100,
+    ),
+    action: str | None = Query(
+        None,
+        max_length=100,
+    ),
+    module: str | None = Query(
+        None,
+        max_length=100,
+    ),
+    module_id: int | None = Query(
+        None,
+        ge=1,
+    ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
     return get_activity_logs(
-        db,
-        current_user.id,
-        limit,
+        db=db,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit,
+        action=action,
+        module=module,
+        module_id=module_id,
     )
 
 
 @router.get(
     "/all",
-    response_model=list[ActivityLogResponse],
+    response_model=list[
+        ActivityLogResponse
+    ],
 )
 def read_all_activity_logs(
-    limit: int = 50,
+    skip: int = Query(
+        0,
+        ge=0,
+    ),
+    limit: int = Query(
+        50,
+        ge=1,
+        le=200,
+    ),
+    user_id: int | None = Query(
+        None,
+        ge=1,
+    ),
+    action: str | None = Query(
+        None,
+        max_length=100,
+    ),
+    module: str | None = Query(
+        None,
+        max_length=100,
+    ),
+    module_id: int | None = Query(
+        None,
+        ge=1,
+    ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
+    if not is_admin(
+        current_user
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Admin access required"
+            ),
+        )
+
     return get_all_activity_logs(
+        db=db,
+        skip=skip,
+        limit=limit,
+        user_id=user_id,
+        action=action,
+        module=module,
+        module_id=module_id,
+    )
+
+
+@router.get(
+    "/stats",
+    response_model=ActivityStatsResponse,
+)
+def read_activity_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_user
+    ),
+):
+    return get_activity_stats(
         db,
-        limit,
+        current_user,
     )
 
 
@@ -92,35 +220,25 @@ def read_all_activity_logs(
 def read_activity_log(
     activity_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
     try:
-        return get_activity_log_by_id(
+        return get_activity_log_for_user(
             db,
             activity_id,
+            current_user,
         )
 
-    except ValueError as e:
+    except ValueError as exc:
         raise HTTPException(
             status_code=404,
-            detail=str(e),
+            detail=str(exc),
         )
 
-
-@router.delete("/{activity_id}")
-def delete_existing_activity_log(
-    activity_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    try:
-        return delete_activity_log(
-            db,
-            activity_id,
-        )
-
-    except ValueError as e:
+    except PermissionError as exc:
         raise HTTPException(
-            status_code=404,
-            detail=str(e),
+            status_code=403,
+            detail=str(exc),
         )
