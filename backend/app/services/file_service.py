@@ -5,16 +5,54 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.file import File
+from app.models.folder import Folder
 from app.schemas.file import FileCreate
 
 
-def can_manage_file(file: File, user_id: int, role: str) -> bool:
+PRIVILEGED_ROLES = {
+    "admin",
+    "super_admin",
+    "manager",
+}
+
+
+def can_manage_file(
+    file: File,
+    user_id: int,
+    role: str,
+) -> bool:
     normalized_role = (role or "").strip().lower()
 
-    if normalized_role in {"admin", "super_admin", "manager"}:
+    if normalized_role in PRIVILEGED_ROLES:
         return True
 
     return file.uploaded_by == user_id
+
+
+def validate_folder_access(
+    db: Session,
+    folder_id: int | None,
+    user_id: int,
+):
+    if folder_id is None:
+        return None
+
+    folder = (
+        db.query(Folder)
+        .filter(
+            Folder.id == folder_id,
+            Folder.owner_id == user_id,
+        )
+        .first()
+    )
+
+    if not folder:
+        raise HTTPException(
+            status_code=404,
+            detail="Folder not found",
+        )
+
+    return folder
 
 
 def list_files(
@@ -22,21 +60,38 @@ def list_files(
     user_id: int,
     role: str,
     task_id: int = None,
+    folder_id: int = None,
 ):
-    query = db.query(File).filter(File.is_active == True)
+    query = db.query(File).filter(
+        File.is_active == True
+    )
 
     normalized_role = (role or "").strip().lower()
 
     if normalized_role in {"employee", "user"}:
-        query = query.filter(File.uploaded_by == user_id)
+        query = query.filter(
+            File.uploaded_by == user_id
+        )
 
     if task_id is not None:
-        query = query.filter(File.task_id == task_id)
+        query = query.filter(
+            File.task_id == task_id
+        )
 
-    return query.order_by(File.created_at.desc()).all()
+    if folder_id is not None:
+        query = query.filter(
+            File.folder_id == folder_id
+        )
+
+    return query.order_by(
+        File.created_at.desc()
+    ).all()
 
 
-def get_my_files(db: Session, user_id: int):
+def get_my_files(
+    db: Session,
+    user_id: int,
+):
     return (
         db.query(File)
         .filter(
@@ -64,10 +119,17 @@ def get_file_by_id(
     )
 
     if not file:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(
+            status_code=404,
+            detail="File not found",
+        )
 
     if user_id is not None and role is not None:
-        if not can_manage_file(file, user_id, role):
+        if not can_manage_file(
+            file,
+            user_id,
+            role,
+        ):
             raise HTTPException(
                 status_code=403,
                 detail="Not allowed to access this file",
@@ -93,9 +155,16 @@ def download_file(
     )
 
     if not file:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(
+            status_code=404,
+            detail="File not found",
+        )
 
-    if not can_manage_file(file, user_id, role):
+    if not can_manage_file(
+        file,
+        user_id,
+        role,
+    ):
         raise HTTPException(
             status_code=403,
             detail="Not allowed to download this file",
@@ -119,8 +188,15 @@ def create_file(
     file_type: str,
     file_size: int,
 ):
+    validate_folder_access(
+        db=db,
+        folder_id=file_data.folder_id,
+        user_id=uploaded_by,
+    )
+
     new_file = File(
         task_id=file_data.task_id,
+        folder_id=file_data.folder_id,
         uploaded_by=uploaded_by,
         file_name=file_name,
         file_path=file_path,
@@ -135,6 +211,7 @@ def create_file(
         db.commit()
         db.refresh(new_file)
         return new_file
+
     except Exception:
         db.rollback()
         raise
@@ -156,10 +233,17 @@ def delete_file(
     )
 
     if not file:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(
+            status_code=404,
+            detail="File not found",
+        )
 
     if user_id is not None and role is not None:
-        if not can_manage_file(file, user_id, role):
+        if not can_manage_file(
+            file,
+            user_id,
+            role,
+        ):
             raise HTTPException(
                 status_code=403,
                 detail="Not allowed to delete this file",
@@ -171,7 +255,11 @@ def delete_file(
 
     try:
         db.commit()
-        return {"message": "File deleted successfully"}
+
+        return {
+            "message": "File deleted successfully"
+        }
+
     except Exception:
         db.rollback()
         raise

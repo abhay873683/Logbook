@@ -70,6 +70,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 )
 def read_files(
     task_id: int = None,
+    folder_id: int = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -78,6 +79,7 @@ def read_files(
         user_id=current_user.id,
         role=current_user.role,
         task_id=task_id,
+        folder_id=folder_id,
     )
 
 
@@ -168,6 +170,7 @@ def read_file(
 )
 def upload_file(
     task_id: int = Form(...),
+    folder_id: int | None = Form(None),
     uploaded_file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -216,6 +219,7 @@ def upload_file(
 
         file_data = FileCreate(
             task_id=task_id,
+            folder_id=folder_id,
         )
     except Exception:
         if os.path.exists(file_path):

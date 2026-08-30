@@ -1,29 +1,24 @@
-from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 
+from pydantic import BaseModel
 
-# ----------------------------------------
-# Create File
-# ----------------------------------------
+
 class FileCreate(BaseModel):
     task_id: int
+    folder_id: Optional[int] = None
 
 
-# ----------------------------------------
-# Update File
-# ----------------------------------------
 class FileUpdate(BaseModel):
     file_name: Optional[str] = None
     is_downloadable: Optional[bool] = None
+    folder_id: Optional[int] = None
 
 
-# ----------------------------------------
-# Response File
-# ----------------------------------------
 class FileResponse(BaseModel):
     id: int
     task_id: int
+    folder_id: Optional[int] = None
     uploaded_by: int
     file_name: str
     file_path: str

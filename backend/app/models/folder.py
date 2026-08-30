@@ -69,6 +69,12 @@ class Folder(Base):
         cascade="all, delete-orphan",
     )
 
+    files = relationship(
+        "File",
+        back_populates="folder",
+        passive_deletes=True,
+    )
+
     def __repr__(self):
         return (
             f"<Folder id={self.id} "
