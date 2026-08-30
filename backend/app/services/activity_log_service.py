@@ -63,11 +63,16 @@ def create_activity_log(
         ip_address=activity.ip_address,
     )
 
-    db.add(new_log)
-    db.commit()
-    db.refresh(new_log)
+    try:
+        db.add(new_log)
+        db.commit()
+        db.refresh(new_log)
 
-    return new_log
+        return new_log
+
+    except Exception:
+        db.rollback()
+        raise
 
 
 def log_activity(

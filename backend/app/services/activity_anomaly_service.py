@@ -625,6 +625,13 @@ def scan_activity_anomalies(
     db: Session,
     window_hours: int = 24,
 ):
+    since = (
+        datetime.now(timezone.utc)
+        - timedelta(
+            hours=window_hours
+        )
+    )
+
     user_ids = [
         row[0]
         for row in (
@@ -638,6 +645,8 @@ def scan_activity_anomalies(
                 ActivityLog.created_at.isnot(
                     None
                 ),
+                ActivityLog.created_at
+                >= since,
             )
             .distinct()
             .all()
