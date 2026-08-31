@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -30,6 +32,36 @@ def advanced_search(
     resource_type: str = Query(
         "all",
     ),
+    project_id: int | None = Query(
+        None,
+        ge=1,
+    ),
+    project_status: str | None = Query(
+        None,
+    ),
+    task_status: str | None = Query(
+        None,
+    ),
+    priority: str | None = Query(
+        None,
+    ),
+    file_type: str | None = Query(
+        None,
+    ),
+    created_from: datetime | None = Query(
+        None,
+    ),
+    created_to: datetime | None = Query(
+        None,
+    ),
+    min_relevance: float = Query(
+        0.0,
+        ge=0,
+        le=1,
+    ),
+    sort_by: str = Query(
+        "relevance",
+    ),
     skip: int = Query(
         0,
         ge=0,
@@ -51,6 +83,15 @@ def advanced_search(
             role=current_user.role,
             query=q,
             resource_type=resource_type,
+            project_id=project_id,
+            project_status=project_status,
+            task_status=task_status,
+            priority=priority,
+            file_type=file_type,
+            created_from=created_from,
+            created_to=created_to,
+            min_relevance=min_relevance,
+            sort_by=sort_by,
             skip=skip,
             limit=limit,
         )

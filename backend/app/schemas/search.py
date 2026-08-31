@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SearchResult(BaseModel):
@@ -9,7 +10,10 @@ class SearchResult(BaseModel):
     title: str
     snippet: str | None = None
     relevance: float
-    metadata: dict[str, Any] = {}
+    created_at: datetime | None = None
+    metadata: dict[str, Any] = Field(
+        default_factory=dict
+    )
 
 
 class SearchResponse(BaseModel):
@@ -18,4 +22,8 @@ class SearchResponse(BaseModel):
     total: int
     skip: int
     limit: int
+    sort_by: str
+    filters: dict[str, Any] = Field(
+        default_factory=dict
+    )
     results: list[SearchResult]
