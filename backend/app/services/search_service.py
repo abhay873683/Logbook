@@ -1,4 +1,6 @@
 from datetime import datetime
+from difflib import SequenceMatcher
+import re
 
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
@@ -31,6 +33,8 @@ RESOURCE_TYPES = {
 
 SORT_OPTIONS = {
     "relevance",
+    "semantic",
+    "hybrid",
     "newest",
     "oldest",
 }
@@ -85,13 +89,269 @@ def _text_filter(query, *columns):
             column.ilike(f"%{clean_query}%")
         )
 
-    for term in _terms(clean_query):
+    query_terms = set(
+        _terms(clean_query)
+    )
+
+    semantic_terms = (
+        _expand_semantic_tokens(
+            query_terms
+        )
+    )
+
+    for term in semantic_terms:
         for column in columns:
             conditions.append(
                 column.ilike(f"%{term}%")
             )
 
     return or_(*conditions)
+
+
+
+def _semantic_tokens(value: str):
+    text = (value or "").lower()
+
+    text = re.sub(
+        r"[^a-z0-9\s]+",
+        " ",
+        text,
+    )
+
+    stop_words = {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "in",
+        "is",
+        "it",
+        "of",
+        "on",
+        "or",
+        "that",
+        "the",
+        "this",
+        "to",
+        "with",
+    }
+
+    return {
+        token
+        for token in text.split()
+        if len(token) >= 2
+        and token not in stop_words
+    }
+
+
+SEMANTIC_ALIASES = {
+    "bug": {
+        "error",
+        "issue",
+        "defect",
+        "failure",
+        "problem",
+    },
+    "error": {
+        "bug",
+        "issue",
+        "failure",
+        "problem",
+    },
+    "meeting": {
+        "discussion",
+        "call",
+        "sync",
+        "conference",
+    },
+    "report": {
+        "summary",
+        "analysis",
+        "review",
+        "document",
+    },
+    "invoice": {
+        "bill",
+        "payment",
+        "receipt",
+        "finance",
+    },
+    "employee": {
+        "staff",
+        "worker",
+        "team",
+        "member",
+    },
+    "task": {
+        "work",
+        "job",
+        "assignment",
+        "todo",
+    },
+    "project": {
+        "initiative",
+        "workstream",
+        "plan",
+    },
+    "urgent": {
+        "critical",
+        "important",
+        "priority",
+    },
+    "critical": {
+        "urgent",
+        "important",
+        "priority",
+    },
+    "document": {
+        "file",
+        "report",
+        "record",
+    },
+    "file": {
+        "document",
+        "attachment",
+        "record",
+    },
+}
+
+
+def _expand_semantic_tokens(tokens):
+    expanded = set(tokens)
+
+    for token in tokens:
+        expanded.update(
+            SEMANTIC_ALIASES.get(
+                token,
+                set(),
+            )
+        )
+
+    return expanded
+
+
+def _semantic_score(
+    query,
+    title,
+    description=None,
+):
+    query_tokens = _semantic_tokens(
+        query
+    )
+
+    document_text = " ".join(
+        value
+        for value in [
+            title or "",
+            description or "",
+        ]
+        if value
+    )
+
+    document_tokens = _semantic_tokens(
+        document_text
+    )
+
+    if not query_tokens:
+        return 0.0
+
+    expanded_query = (
+        _expand_semantic_tokens(
+            query_tokens
+        )
+    )
+
+    expanded_document = (
+        _expand_semantic_tokens(
+            document_tokens
+        )
+    )
+
+    overlap = (
+        expanded_query
+        & expanded_document
+    )
+
+    token_score = (
+        len(overlap)
+        / max(
+            len(query_tokens),
+            1,
+        )
+    )
+
+    sequence_score = SequenceMatcher(
+        None,
+        (query or "").lower(),
+        document_text.lower(),
+    ).ratio()
+
+    semantic = (
+        (0.75 * min(token_score, 1.0))
+        + (0.25 * sequence_score)
+    )
+
+    return round(
+        min(semantic, 1.0),
+        4,
+    )
+
+
+def _hybrid_score(
+    lexical_score,
+    semantic_score,
+):
+    return round(
+        min(
+            (
+                0.65
+                * lexical_score
+            )
+            + (
+                0.35
+                * semantic_score
+            ),
+            1.0,
+        ),
+        4,
+    )
+
+
+def _apply_semantic_scores(
+    results,
+    query,
+):
+    for item in results:
+        semantic = _semantic_score(
+            query,
+            item.get(
+                "title",
+                "",
+            ),
+            item.get(
+                "snippet",
+                "",
+            ),
+        )
+
+        item["semantic_score"] = (
+            semantic
+        )
+
+        item["hybrid_score"] = (
+            _hybrid_score(
+                item["relevance"],
+                semantic,
+            )
+        )
+
+    return results
 
 
 def _score(query, title, description=None):
@@ -626,6 +886,36 @@ def _search_comments(
 
 
 def _sort_results(results, sort_by):
+    if sort_by == "semantic":
+        results.sort(
+            key=lambda item: (
+                item.get(
+                    "semantic_score",
+                    0.0,
+                ),
+                item["relevance"],
+                item["resource_id"],
+            ),
+            reverse=True,
+        )
+
+        return
+
+    if sort_by == "hybrid":
+        results.sort(
+            key=lambda item: (
+                item.get(
+                    "hybrid_score",
+                    0.0,
+                ),
+                item["relevance"],
+                item["resource_id"],
+            ),
+            reverse=True,
+        )
+
+        return
+
     if sort_by == "newest":
         results.sort(
             key=lambda item: (
@@ -786,6 +1076,11 @@ def search_all(
                 created_to,
             )
         )
+
+    results = _apply_semantic_scores(
+        results,
+        clean_query,
+    )
 
     results = [
         item

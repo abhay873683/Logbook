@@ -61,6 +61,10 @@ def advanced_search(
     ),
     sort_by: str = Query(
         "relevance",
+        description=(
+            "Sort by relevance, semantic, "
+            "hybrid, newest, or oldest"
+        ),
     ),
     skip: int = Query(
         0,

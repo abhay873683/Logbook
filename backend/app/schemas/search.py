@@ -10,6 +10,8 @@ class SearchResult(BaseModel):
     title: str
     snippet: str | None = None
     relevance: float
+    semantic_score: float | None = None
+    hybrid_score: float | None = None
     created_at: datetime | None = None
     metadata: dict[str, Any] = Field(
         default_factory=dict
