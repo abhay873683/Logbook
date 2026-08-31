@@ -591,3 +591,13 @@ app.include_router(
     prefix="/api/v1/chat/assistant",
     tags=["Smart Chat Assistant"],
 )
+
+
+# Advanced Search
+from app.api.v1.routes import search as search_routes
+
+app.include_router(
+    search_routes.router,
+    prefix="/api/v1/search",
+    tags=["Advanced Search"],
+)
