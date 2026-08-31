@@ -6,6 +6,7 @@ from app.models.dashboard import Dashboard
 from app.models.widget import Widget
 
 from app.models.project import Project
+from app.models.project_user import ProjectUser
 from app.models.task import Task, TaskStatusEnum
 from app.models.notification import Notification
 
@@ -27,6 +28,41 @@ ALLOWED_WIDGET_TYPES = {
     "activity_feed",
     "custom_chart",
 }
+
+
+def _accessible_project_ids(
+    db: Session,
+    user_id: int,
+):
+    created_ids = (
+        db.query(
+            Project.id.label("project_id")
+        )
+        .filter(
+            Project.created_by == user_id,
+            Project.is_active.is_(True),
+        )
+    )
+
+    member_ids = (
+        db.query(
+            ProjectUser.project_id.label(
+                "project_id"
+            )
+        )
+        .join(
+            Project,
+            Project.id == ProjectUser.project_id,
+        )
+        .filter(
+            ProjectUser.user_id == user_id,
+            Project.is_active.is_(True),
+        )
+    )
+
+    return created_ids.union(
+        member_ids
+    ).subquery()
 
 
 def create_dashboard(
@@ -54,8 +90,12 @@ def get_dashboards(
 ):
     return (
         db.query(Dashboard)
-        .filter(Dashboard.user_id == user_id)
-        .order_by(Dashboard.created_at.desc())
+        .filter(
+            Dashboard.user_id == user_id
+        )
+        .order_by(
+            Dashboard.created_at.desc()
+        )
         .all()
     )
 
@@ -95,10 +135,16 @@ def update_dashboard(
         dashboard_id,
     )
 
-    values = data.model_dump(exclude_unset=True)
+    values = data.model_dump(
+        exclude_unset=True
+    )
 
     for key, value in values.items():
-        setattr(dashboard, key, value)
+        setattr(
+            dashboard,
+            key,
+            value,
+        )
 
     db.commit()
     db.refresh(dashboard)
@@ -138,14 +184,19 @@ def delete_dashboard(
     )
 
     db.query(Widget).filter(
-        Widget.dashboard_id == dashboard.id
-    ).delete()
+        Widget.dashboard_id
+        == dashboard.id
+    ).delete(
+        synchronize_session=False
+    )
 
     db.delete(dashboard)
     db.commit()
 
     return {
-        "message": "Dashboard deleted successfully"
+        "message": (
+            "Dashboard deleted successfully"
+        )
     }
 
 
@@ -160,16 +211,21 @@ def create_widget(
         data.dashboard_id,
     )
 
-    if data.widget_type not in ALLOWED_WIDGET_TYPES:
+    if (
+        data.widget_type
+        not in ALLOWED_WIDGET_TYPES
+    ):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=(
+                status.HTTP_400_BAD_REQUEST
+            ),
             detail="Invalid widget type",
         )
 
     widget = Widget(
         dashboard_id=data.dashboard_id,
         user_id=user_id,
-        title=data.title,
+        title=data.title.strip(),
         widget_type=data.widget_type,
         config=data.config or {},
         size_x=data.size_x,
@@ -191,8 +247,12 @@ def get_widgets(
 ):
     return (
         db.query(Widget)
-        .filter(Widget.user_id == user_id)
-        .order_by(Widget.created_at.desc())
+        .filter(
+            Widget.user_id == user_id
+        )
+        .order_by(
+            Widget.created_at.desc()
+        )
         .all()
     )
 
@@ -232,17 +292,47 @@ def update_widget(
         widget_id,
     )
 
-    values = data.model_dump(exclude_unset=True)
+    values = data.model_dump(
+        exclude_unset=True
+    )
 
     if "widget_type" in values:
-        if values["widget_type"] not in ALLOWED_WIDGET_TYPES:
+        if (
+            values["widget_type"]
+            not in ALLOWED_WIDGET_TYPES
+        ):
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
                 detail="Invalid widget type",
             )
 
+    if "title" in values:
+        title = values["title"]
+
+        if title is not None:
+            title = title.strip()
+
+            if not title:
+                raise HTTPException(
+                    status_code=(
+                        status.HTTP_400_BAD_REQUEST
+                    ),
+                    detail=(
+                        "Widget title cannot "
+                        "be empty"
+                    ),
+                )
+
+            values["title"] = title
+
     for key, value in values.items():
-        setattr(widget, key, value)
+        setattr(
+            widget,
+            key,
+            value,
+        )
 
     db.commit()
     db.refresh(widget)
@@ -265,7 +355,9 @@ def delete_widget(
     db.commit()
 
     return {
-        "message": "Widget deleted successfully"
+        "message": (
+            "Widget deleted successfully"
+        )
     }
 
 
@@ -281,11 +373,43 @@ def get_widget_data(
     )
 
     if widget.widget_type == "task_summary":
-        total = db.query(func.count(Task.id)).scalar() or 0
+        project_ids = (
+            _accessible_project_ids(
+                db,
+                user_id,
+            )
+        )
+
+        accessible_ids = db.query(
+            project_ids.c.project_id
+        )
+
+        total = (
+            db.query(
+                func.count(Task.id)
+            )
+            .filter(
+                Task.project_id.in_(
+                    accessible_ids
+                ),
+                Task.is_active.is_(True),
+            )
+            .scalar()
+            or 0
+        )
 
         completed = (
-            db.query(func.count(Task.id))
-            .filter(Task.status == TaskStatusEnum.done)
+            db.query(
+                func.count(Task.id)
+            )
+            .filter(
+                Task.project_id.in_(
+                    accessible_ids
+                ),
+                Task.is_active.is_(True),
+                Task.status
+                == TaskStatusEnum.done,
+            )
             .scalar()
             or 0
         )
@@ -295,32 +419,74 @@ def get_widget_data(
             "type": widget.widget_type,
             "data": {
                 "total_tasks": total,
-                "completed_tasks": completed,
-                "pending_tasks": total - completed,
+                "completed_tasks": (
+                    completed
+                ),
+                "pending_tasks": (
+                    total - completed
+                ),
             },
         }
 
-    if widget.widget_type == "project_progress":
-        projects = db.query(Project).all()
+    if (
+        widget.widget_type
+        == "project_progress"
+    ):
+        project_ids = (
+            _accessible_project_ids(
+                db,
+                user_id,
+            )
+        )
+
+        accessible_ids = db.query(
+            project_ids.c.project_id
+        )
+
+        projects = (
+            db.query(Project)
+            .filter(
+                Project.id.in_(
+                    accessible_ids
+                ),
+                Project.is_active.is_(True),
+            )
+            .order_by(
+                Project.updated_at.desc()
+            )
+            .all()
+        )
 
         return {
             "widget_id": widget.id,
             "type": widget.widget_type,
             "data": [
                 {
-                    "project_id": project.id,
+                    "project_id": (
+                        project.id
+                    ),
                     "name": project.name,
-                    "progress": project.progress or 0,
+                    "progress": (
+                        project.progress or 0
+                    ),
                 }
                 for project in projects
             ],
         }
 
-    if widget.widget_type == "activity_feed":
+    if (
+        widget.widget_type
+        == "activity_feed"
+    ):
         notifications = (
             db.query(Notification)
-            .filter(Notification.user_id == user_id)
-            .order_by(Notification.created_at.desc())
+            .filter(
+                Notification.user_id
+                == user_id
+            )
+            .order_by(
+                Notification.created_at.desc()
+            )
             .limit(5)
             .all()
         )
