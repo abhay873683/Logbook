@@ -79,14 +79,45 @@ def _terms(query: str):
     return list(dict.fromkeys(parts))
 
 
+def _normalize_query(value: str):
+    return " ".join(
+        (value or "").split()
+    )
+
+
+def _escape_like(value: str):
+    return (
+        value
+        .replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
+
+
+def _like_pattern(value: str):
+    return (
+        f"%{_escape_like(value)}%"
+    )
+
+
 def _text_filter(query, *columns):
     conditions = []
 
-    clean_query = query.strip()
+    clean_query = _normalize_query(
+        query
+    )
+
+    if not clean_query:
+        return False
 
     for column in columns:
         conditions.append(
-            column.ilike(f"%{clean_query}%")
+            column.ilike(
+                _like_pattern(
+                    clean_query
+                ),
+                escape="\\",
+            )
         )
 
     query_terms = set(
@@ -99,10 +130,17 @@ def _text_filter(query, *columns):
         )
     )
 
-    for term in semantic_terms:
+    for term in sorted(
+        semantic_terms
+    ):
         for column in columns:
             conditions.append(
-                column.ilike(f"%{term}%")
+                column.ilike(
+                    _like_pattern(
+                        term
+                    ),
+                    escape="\\",
+                )
             )
 
     return or_(*conditions)
