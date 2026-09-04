@@ -1,6 +1,8 @@
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.project import Project
+from app.models.project_user import ProjectUser
 from app.models.company import Company
 from app.models.department import Department
 from app.models.team import Team
@@ -14,6 +16,7 @@ from app.schemas.project import (
 # ----------------------------------------
 # Allowed Project Statuses
 # ----------------------------------------
+
 ALLOWED_PROJECT_STATUSES = {
     "Planned",
     "In Progress",
@@ -24,27 +27,120 @@ ALLOWED_PROJECT_STATUSES = {
 
 
 # ----------------------------------------
-# Get All Projects
+# Get Accessible Project IDs
 # ----------------------------------------
-def get_all_projects(db: Session):
-    return db.query(Project).all()
+
+def get_accessible_project_ids(
+    db: Session,
+    user_id: int,
+):
+    created_project_ids = (
+        db.query(Project.id)
+        .filter(
+            Project.created_by == user_id,
+            Project.is_active.is_(True),
+        )
+    )
+
+    member_project_ids = (
+        db.query(ProjectUser.project_id)
+        .join(
+            Project,
+            Project.id == ProjectUser.project_id,
+        )
+        .filter(
+            ProjectUser.user_id == user_id,
+            Project.is_active.is_(True),
+        )
+    )
+
+    return created_project_ids.union(
+        member_project_ids
+    )
 
 
 # ----------------------------------------
-# Get Project By ID
+# Get All Accessible Projects
 # ----------------------------------------
+
+def get_all_projects(
+    db: Session,
+    user_id: int,
+):
+    accessible_ids = get_accessible_project_ids(
+        db,
+        user_id,
+    )
+
+    return (
+        db.query(Project)
+        .filter(
+            Project.id.in_(accessible_ids),
+            Project.is_active.is_(True),
+        )
+        .order_by(
+            Project.updated_at.desc(),
+            Project.id.desc(),
+        )
+        .all()
+    )
+
+
+# ----------------------------------------
+# Get Accessible Project By ID
+# ----------------------------------------
+
 def get_project_by_id(
     db: Session,
     project_id: int,
+    user_id: int,
 ):
+    accessible_ids = get_accessible_project_ids(
+        db,
+        user_id,
+    )
+
     project = (
         db.query(Project)
-        .filter(Project.id == project_id)
+        .filter(
+            Project.id == project_id,
+            Project.id.in_(accessible_ids),
+            Project.is_active.is_(True),
+        )
         .first()
     )
 
     if not project:
-        raise ValueError("Project not found")
+        raise ValueError(
+            "Project not found or access denied"
+        )
+
+    return project
+
+
+# ----------------------------------------
+# Get Project Owned By Current User
+# ----------------------------------------
+
+def get_owned_project_by_id(
+    db: Session,
+    project_id: int,
+    user_id: int,
+):
+    project = (
+        db.query(Project)
+        .filter(
+            Project.id == project_id,
+            Project.created_by == user_id,
+            Project.is_active.is_(True),
+        )
+        .first()
+    )
+
+    if not project:
+        raise ValueError(
+            "Project not found or permission denied"
+        )
 
     return project
 
@@ -52,18 +148,23 @@ def get_project_by_id(
 # ----------------------------------------
 # Validate Company
 # ----------------------------------------
+
 def validate_company(
     db: Session,
     company_id: int,
 ):
     company = (
         db.query(Company)
-        .filter(Company.id == company_id)
+        .filter(
+            Company.id == company_id
+        )
         .first()
     )
 
     if not company:
-        raise ValueError("Company not found")
+        raise ValueError(
+            "Company not found"
+        )
 
     return company
 
@@ -71,6 +172,7 @@ def validate_company(
 # ----------------------------------------
 # Validate Department
 # ----------------------------------------
+
 def validate_department(
     db: Session,
     department_id: int | None,
@@ -81,12 +183,16 @@ def validate_department(
 
     department = (
         db.query(Department)
-        .filter(Department.id == department_id)
+        .filter(
+            Department.id == department_id
+        )
         .first()
     )
 
     if not department:
-        raise ValueError("Department not found")
+        raise ValueError(
+            "Department not found"
+        )
 
     if department.company_id != company_id:
         raise ValueError(
@@ -99,6 +205,7 @@ def validate_department(
 # ----------------------------------------
 # Validate Team
 # ----------------------------------------
+
 def validate_team(
     db: Session,
     team_id: int | None,
@@ -109,12 +216,16 @@ def validate_team(
 
     team = (
         db.query(Team)
-        .filter(Team.id == team_id)
+        .filter(
+            Team.id == team_id
+        )
         .first()
     )
 
     if not team:
-        raise ValueError("Team not found")
+        raise ValueError(
+            "Team not found"
+        )
 
     if department_id is None:
         raise ValueError(
@@ -132,6 +243,7 @@ def validate_team(
 # ----------------------------------------
 # Validate Dates
 # ----------------------------------------
+
 def validate_project_dates(
     start_date,
     end_date,
@@ -149,19 +261,22 @@ def validate_project_dates(
 # ----------------------------------------
 # Validate Status
 # ----------------------------------------
+
 def validate_project_status(
     status: str,
 ):
     if status not in ALLOWED_PROJECT_STATUSES:
         raise ValueError(
             "Invalid project status. "
-            f"Allowed statuses: {', '.join(sorted(ALLOWED_PROJECT_STATUSES))}"
+            f"Allowed statuses: "
+            f"{', '.join(sorted(ALLOWED_PROJECT_STATUSES))}"
         )
 
 
 # ----------------------------------------
 # Validate Progress
 # ----------------------------------------
+
 def validate_project_progress(
     progress: int,
 ):
@@ -174,43 +289,38 @@ def validate_project_progress(
 # ----------------------------------------
 # Create Project
 # ----------------------------------------
+
 def create_project(
     db: Session,
     project: ProjectCreate,
     current_user,
 ):
-    # Company validation
     validate_company(
         db,
         project.company_id,
     )
 
-    # Department validation
     validate_department(
         db,
         project.department_id,
         project.company_id,
     )
 
-    # Team validation
     validate_team(
         db,
         project.team_id,
         project.department_id,
     )
 
-    # Date validation
     validate_project_dates(
         project.start_date,
         project.end_date,
     )
 
-    # Status validation
     validate_project_status(
         project.status,
     )
 
-    # Progress validation
     validate_project_progress(
         project.progress,
     )
@@ -239,19 +349,19 @@ def create_project(
 # ----------------------------------------
 # Update Project
 # ----------------------------------------
+
 def update_project(
     db: Session,
     project_id: int,
     project_data: ProjectUpdate,
+    user_id: int,
 ):
-    project = get_project_by_id(
+    project = get_owned_project_by_id(
         db,
         project_id,
+        user_id,
     )
 
-    # ------------------------------------
-    # Calculate final values first
-    # ------------------------------------
     final_company_id = (
         project_data.company_id
         if project_data.company_id is not None
@@ -294,9 +404,6 @@ def update_project(
         else project.progress
     )
 
-    # ------------------------------------
-    # Validate final values
-    # ------------------------------------
     validate_company(
         db,
         final_company_id,
@@ -327,9 +434,6 @@ def update_project(
         final_progress,
     )
 
-    # ------------------------------------
-    # Update fields
-    # ------------------------------------
     update_data = project_data.model_dump(
         exclude_unset=True
     )
@@ -338,7 +442,7 @@ def update_project(
         setattr(
             project,
             key,
-            value
+            value,
         )
 
     db.commit()
@@ -350,18 +454,18 @@ def update_project(
 # ----------------------------------------
 # Delete Project
 # ----------------------------------------
+
 def delete_project(
     db: Session,
     project_id: int,
+    user_id: int,
 ):
-    project = get_project_by_id(
+    project = get_owned_project_by_id(
         db,
         project_id,
+        user_id,
     )
 
-    # ------------------------------------
-    # Prevent delete if tasks exist
-    # ------------------------------------
     if project.tasks:
         raise ValueError(
             "Project cannot be deleted because tasks are linked to it"

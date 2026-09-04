@@ -10,7 +10,7 @@ from pydantic import BaseModel
 class SubtaskBase(BaseModel):
     title: str
     description: Optional[str] = None
-    status: str = "pending"
+    status: str = "todo"
     is_active: bool = True
 
 

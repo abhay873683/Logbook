@@ -1,8 +1,9 @@
-# ============================================================
+﻿# ============================================================
 # TreeFlow AI - Main Application
 # ============================================================
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
 
@@ -56,7 +57,6 @@ from app.api.v1.routes import restore
 from app.api.v1.routes import trash
 from app.api.v1.routes import file_report
 
-# Day 39
 from app.api.v1.routes import folders
 
 from app.api.v1.routes import notification
@@ -71,22 +71,17 @@ from app.api.v1.routes import chat_ws
 
 from app.api.v1.routes import ai
 
-# Day 38 - Notification Preferences / Events / WebSocket
 from app.api.v1.routes import notification_events
 from app.api.v1.routes import notification_ws
 
-# Day 41 - Time Tracking
 from app.api.v1.routes import time_tracking
 from app.api.v1.routes import timesheets
 
-# Day 42 - Dashboard & Widgets
 from app.api.v1.routes import dashboards
 from app.api.v1.routes import widgets
 
-# Day 43 - Calendar & Events
 from app.api.v1.routes import events
 
-# Day 44 - Reminders
 from app.api.v1.routes import reminders
 
 
@@ -98,6 +93,22 @@ app = FastAPI(
     title="TreeFlow AI API",
     description="Backend API for TreeFlow AI",
     version="1.0.0",
+)
+
+
+# ============================================================
+# CORS Configuration
+# ============================================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -289,7 +300,7 @@ app.include_router(
 
 
 # ============================================================
-# Day 39 - Folders
+# Folders
 # ============================================================
 
 app.include_router(
@@ -377,7 +388,7 @@ app.include_router(
 
 
 # ============================================================
-# Day 44 - Reminders
+# Reminders
 # ============================================================
 
 app.include_router(
@@ -388,7 +399,7 @@ app.include_router(
 
 
 # ============================================================
-# Notification Preferences & Event Logs
+# Notification Preferences & Events
 # ============================================================
 
 app.include_router(
@@ -443,7 +454,7 @@ app.include_router(
 
 
 # ============================================================
-# Day 42 - Custom Dashboards
+# Custom Dashboards
 # ============================================================
 
 app.include_router(
@@ -454,7 +465,7 @@ app.include_router(
 
 
 # ============================================================
-# Day 42 - Widgets
+# Widgets
 # ============================================================
 
 app.include_router(
@@ -509,7 +520,7 @@ app.include_router(
 
 
 # ============================================================
-# Day 41 - Time Tracking
+# Time Tracking
 # ============================================================
 
 app.include_router(
@@ -517,6 +528,11 @@ app.include_router(
     prefix="/api/v1/time-tracking",
     tags=["Time Tracking"],
 )
+
+
+# ============================================================
+# Timesheets
+# ============================================================
 
 app.include_router(
     timesheets.router,
@@ -526,7 +542,7 @@ app.include_router(
 
 
 # ============================================================
-# Day 43 - Calendar & Events
+# Calendar & Events
 # ============================================================
 
 app.include_router(
@@ -546,8 +562,9 @@ def root():
         "message": "Welcome to TreeFlow AI API"
     }
 
+
 # ============================================================
-# Day 46 - Leave & Attendance
+# Leave & Attendance
 # ============================================================
 
 from app.api.v1.routes import leaves as leave_routes
@@ -565,10 +582,12 @@ app.include_router(
     tags=["Attendance"],
 )
 
+
+# ============================================================
+# Chat Search
+# ============================================================
+
 from app.api.v1.routes import chat_search
-
-from app.api.v1.routes import message_reaction
-
 
 app.include_router(
     chat_search.router,
@@ -577,14 +596,24 @@ app.include_router(
 )
 
 
+# ============================================================
+# Message Reactions
+# ============================================================
+
+from app.api.v1.routes import message_reaction
+
 app.include_router(
     message_reaction.router,
     prefix="/api/v1/chat/messages",
     tags=["Message Reactions"],
 )
 
-from app.api.v1.routes import chat_assistant
 
+# ============================================================
+# Smart Chat Assistant
+# ============================================================
+
+from app.api.v1.routes import chat_assistant
 
 app.include_router(
     chat_assistant.router,
@@ -593,7 +622,10 @@ app.include_router(
 )
 
 
+# ============================================================
 # Advanced Search
+# ============================================================
+
 from app.api.v1.routes import search as search_routes
 
 app.include_router(

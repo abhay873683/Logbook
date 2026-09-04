@@ -34,6 +34,10 @@ from app.services.activity_log_service import (
 router = APIRouter()
 
 
+# ----------------------------------------
+# Get Client IP
+# ----------------------------------------
+
 def get_client_ip(
     request: Request,
 ) -> str | None:
@@ -49,6 +53,10 @@ def get_client_ip(
 
     return None
 
+
+# ----------------------------------------
+# Create Project
+# ----------------------------------------
 
 @router.post(
     "/",
@@ -89,6 +97,10 @@ def create_new_project(
         )
 
 
+# ----------------------------------------
+# Get Projects
+# ----------------------------------------
+
 @router.get(
     "/",
     response_model=List[ProjectResponse],
@@ -97,8 +109,15 @@ def get_projects(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_all_projects(db)
+    return get_all_projects(
+        db,
+        current_user.id,
+    )
 
+
+# ----------------------------------------
+# Get Single Project
+# ----------------------------------------
 
 @router.get(
     "/{project_id}",
@@ -113,6 +132,7 @@ def get_project(
         return get_project_by_id(
             db,
             project_id,
+            current_user.id,
         )
 
     except ValueError as e:
@@ -121,6 +141,10 @@ def get_project(
             detail=str(e),
         )
 
+
+# ----------------------------------------
+# Update Project
+# ----------------------------------------
 
 @router.put(
     "/{project_id}",
@@ -138,6 +162,7 @@ def update_existing_project(
             db,
             project_id,
             project,
+            current_user.id,
         )
 
         log_activity(
@@ -157,7 +182,11 @@ def update_existing_project(
     except ValueError as e:
         error_message = str(e)
 
-        if error_message == "Project not found":
+        if (
+            "not found" in error_message.lower()
+            or "permission" in error_message.lower()
+            or "access denied" in error_message.lower()
+        ):
             status_code = 404
         else:
             status_code = 400
@@ -168,7 +197,13 @@ def update_existing_project(
         )
 
 
-@router.delete("/{project_id}")
+# ----------------------------------------
+# Delete Project
+# ----------------------------------------
+
+@router.delete(
+    "/{project_id}"
+)
 def delete_existing_project(
     project_id: int,
     request: Request,
@@ -179,6 +214,7 @@ def delete_existing_project(
         existing = get_project_by_id(
             db,
             project_id,
+            current_user.id,
         )
 
         project_name = existing.name
@@ -186,6 +222,7 @@ def delete_existing_project(
         result = delete_project(
             db,
             project_id,
+            current_user.id,
         )
 
         log_activity(
@@ -205,7 +242,11 @@ def delete_existing_project(
     except ValueError as e:
         error_message = str(e)
 
-        if error_message == "Project not found":
+        if (
+            "not found" in error_message.lower()
+            or "permission" in error_message.lower()
+            or "access denied" in error_message.lower()
+        ):
             status_code = 404
         else:
             status_code = 400
